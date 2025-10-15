@@ -14,10 +14,10 @@ module "jumpvm" {
   name     = local.jump_vm_name
   network_interfaces = {
     network_interface_1 = {
-      name = "${local.jump_vm_name}-nic1"
+      name = module.naming_jump_network_interface.name
       ip_configurations = {
         ip_configuration_1 = {
-          name                          = "${local.jump_vm_name}-nic1-ipconfig1"
+          name                          = module.naming_jump_ip_configuration.name
           private_ip_subnet_resource_id = module.ai_lz_vnet.subnets["JumpboxSubnet"].resource_id
         }
       }

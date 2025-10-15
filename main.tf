@@ -1,6 +1,15 @@
+module "naming_resource_group" {
+  source      = "./modules/naming"
+  project     = var.project_code
+  environment = var.environment_code
+  location    = var.location
+  resource    = "resource_group"
+  rg_version  = var.resource_group_version
+}
+
 resource "azurerm_resource_group" "this" {
   location = var.location
-  name     = var.resource_group_name
+  name     = module.naming_resource_group.name
   tags     = var.tags
 }
 

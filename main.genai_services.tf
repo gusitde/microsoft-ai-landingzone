@@ -123,7 +123,7 @@ module "storage_account" {
   private_endpoints = {
     for endpoint in var.genai_storage_account_definition.endpoint_types :
     endpoint => {
-      name                          = "${local.genai_storage_account_name}-${endpoint}-pe"
+      name                          = module.naming_genai_storage_account_private_endpoints[endpoint].name
       private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones["storage_${lower(endpoint)}_zone"].resource_id] : [local.private_dns_zones_existing["storage_${lower(endpoint)}_zone"].resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
       subresource_name              = endpoint
