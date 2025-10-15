@@ -47,14 +47,14 @@ module "hub_vnet_peering" {
   allow_gateway_transit        = var.vnet_definition.vnet_peering_configuration.allow_gateway_transit
   allow_virtual_network_access = var.vnet_definition.vnet_peering_configuration.allow_virtual_network_access
   create_reverse_peering       = var.vnet_definition.vnet_peering_configuration.create_reverse_peering
-  name                         = var.vnet_definition.vnet_peering_configuration.name != null ? var.vnet_definition.vnet_peering_configuration.name : "${local.vnet_name}-local-to-remote"
+  name                         = coalesce(var.vnet_definition.vnet_peering_configuration.name, module.naming_virtual_network_peering_forward.name)
   remote_virtual_network = {
     resource_id = var.vnet_definition.vnet_peering_configuration.peer_vnet_resource_id
   }
   reverse_allow_forwarded_traffic      = var.vnet_definition.vnet_peering_configuration.reverse_allow_forwarded_traffic
   reverse_allow_gateway_transit        = var.vnet_definition.vnet_peering_configuration.reverse_allow_gateway_transit
   reverse_allow_virtual_network_access = var.vnet_definition.vnet_peering_configuration.reverse_allow_virtual_network_access
-  reverse_name                         = var.vnet_definition.vnet_peering_configuration.reverse_name != null ? var.vnet_definition.vnet_peering_configuration.reverse_name : "${local.vnet_name}-remote-to-local"
+  reverse_name                         = coalesce(var.vnet_definition.vnet_peering_configuration.reverse_name, module.naming_virtual_network_peering_reverse.name)
   reverse_use_remote_gateways          = var.vnet_definition.vnet_peering_configuration.reverse_use_remote_gateways
   use_remote_gateways                  = var.vnet_definition.vnet_peering_configuration.use_remote_gateways
   virtual_network = {
@@ -67,7 +67,7 @@ module "hub_vnet_peering" {
 resource "azurerm_virtual_hub_connection" "this" {
   count = var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id != null ? 1 : 0
 
-  name                      = "${local.vnet_name}-to-${basename(var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id)}"
+  name                      = module.naming_virtual_hub_connection.name
   remote_virtual_network_id = module.ai_lz_vnet.resource_id
   virtual_hub_id            = var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id
 }
@@ -98,7 +98,7 @@ module "fw_pip" {
   count   = var.flag_platform_landing_zone ? 1 : 0
 
   location            = azurerm_resource_group.this.location
-  name                = "${local.firewall_name}-pip"
+  name                = module.naming_firewall_public_ip.name
   resource_group_name = azurerm_resource_group.this.name
   enable_telemetry    = var.enable_telemetry
   zones               = var.firewall_definition.zones
@@ -230,7 +230,7 @@ module "application_gateway" {
   enable_telemetry            = var.enable_telemetry
   http2_enable                = var.app_gateway_definition.http2_enable
   probe_configurations        = var.app_gateway_definition.probe_configurations
-  public_ip_name              = "${local.application_gateway_name}-pip"
+  public_ip_name              = module.naming_application_gateway_public_ip.name
   redirect_configuration      = var.app_gateway_definition.redirect_configuration
   rewrite_rule_set            = var.app_gateway_definition.rewrite_rule_set
   role_assignments            = local.application_gateway_role_assignments

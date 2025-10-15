@@ -1,21 +1,30 @@
 locals {
-  application_gateway_name = try(var.app_gateway_definition.name, null) != null ? var.app_gateway_definition.name : (var.name_prefix != null ? "${var.name_prefix}-appgw" : "ai-alz-appgw")
+  application_gateway_name = coalesce(
+    try(var.app_gateway_definition.name, null),
+    module.naming_application_gateway.name
+  )
   application_gateway_role_assignments = merge(
     local.application_gateway_role_assignments_base,
     try(var.app_gateway_definition.role_assignments, {})
   )
   application_gateway_role_assignments_base = {}
-  bastion_name                              = try(var.bastion_definition.name, null) != null ? var.bastion_definition.name : (var.name_prefix != null ? "${var.name_prefix}-bastion" : "ai-alz-bastion")
+  bastion_name = coalesce(
+    try(var.bastion_definition.name, null),
+    module.naming_bastion_host.name
+  )
   default_virtual_network_link = {
     alz_vnet_link = {
-      vnetlinkname      = "${local.vnet_name}-link"
+      vnetlinkname      = module.naming_private_dns_vnet_link.name
       vnetid            = module.ai_lz_vnet.resource_id
       autoregistration  = false
       resolution_policy = var.private_dns_zones.allow_internet_resolution_fallback == false ? "Default" : "NxDomainRedirect"
     }
   }
   deployed_subnets = { for subnet_name, subnet in local.subnets : subnet_name => subnet if subnet.enabled }
-  firewall_name    = try(var.firewall_definition.name, null) != null ? var.firewall_definition.name : (var.name_prefix != null ? "${var.name_prefix}-fw" : "ai-alz-fw")
+  firewall_name = coalesce(
+    try(var.firewall_definition.name, null),
+    module.naming_firewall.name
+  )
   private_dns_zone_map = {
     key_vault_zone = {
       name = "privatelink.vaultcore.azure.net"
@@ -87,7 +96,7 @@ locals {
     resource_id = "${coalesce(var.private_dns_zones.existing_zones_resource_group_resource_id, "notused")}/providers/Microsoft.Network/privateDnsZones/${value.name}" #TODO: determine if there is a more elegant way to do this while avoiding errors
     }
   } : {}
-  route_table_name = "${local.vnet_name}-firewall-route-table"
+  route_table_name = module.naming_firewall_route_table.name
   subnets = {
     AzureBastionSubnet = {
       enabled          = var.flag_platform_landing_zone == true ? try(var.vnet_definition.subnets["AzureBastionSubnet"].enabled, true) : try(var.vnet_definition.subnets["AzureBastionSubnet"].enabled, false)
@@ -199,7 +208,10 @@ locals {
     }
   }
   virtual_network_links = merge(local.default_virtual_network_link, var.private_dns_zones.network_links)
-  vnet_name             = try(var.vnet_definition.name, null) != null ? var.vnet_definition.name : (var.name_prefix != null ? "${var.name_prefix}-vnet" : "ai-alz-vnet")
+  vnet_name = coalesce(
+    try(var.vnet_definition.name, null),
+    module.naming_virtual_network.name
+  )
   #web_application_firewall_managed_rules = var.waf_policy_definition.managed_rules == null ? {
   #  managed_rule_set = tomap({
   #    owasp = {
@@ -209,5 +221,8 @@ locals {
   #    }
   #  })
   #} : var.waf_policy_definition.managed_rules
-  web_application_firewall_policy_name = try(var.waf_policy_definition.name, null) != null ? var.waf_policy_definition.name : (var.name_prefix != null ? "${var.name_prefix}-waf-policy" : "ai-alz-waf-policy")
+  web_application_firewall_policy_name = coalesce(
+    try(var.waf_policy_definition.name, null),
+    module.naming_application_gateway_waf_policy.name
+  )
 }
