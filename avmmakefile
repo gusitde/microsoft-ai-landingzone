@@ -1,0 +1,19 @@
+# Offline-friendly AVM helper makefile used by the ./avm wrapper script.
+# This file intentionally keeps the targets minimal so that repository tests
+# can run without external container tooling.
+
+TERRAFORM ?= $(CURDIR)/tools/terraform
+
+.PHONY: pre-commit pr-check terraform-fmt terraform-validate
+
+pre-commit: terraform-fmt terraform-validate
+	@echo "AVM pre-commit checks completed."
+
+pr-check: pre-commit
+	@echo "AVM PR checks completed."
+
+terraform-fmt:
+	$(TERRAFORM) fmt -recursive
+
+terraform-validate:
+	$(TERRAFORM) validate
