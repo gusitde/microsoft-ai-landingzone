@@ -31,16 +31,7 @@ variable "vnet_definition" {
     }), {})
 
   })
-  default = {
-    name          = "vnet-ai-westeu"
-    address_space = "10.0.0.0/16"
-    subnets = {
-      workload = {
-        name           = "snet-workload"
-        address_prefix = "10.0.1.0/24"
-      }
-    }
-  }
+  default = null
 
   description = <<DESCRIPTION
 Configuration object for the Virtual Network (VNet) to be deployed.
@@ -72,19 +63,7 @@ Configuration object for the Virtual Network (VNet) to be deployed.
 
 **Input format:** Supply an HCL object that matches the schema above. When using the interactive prompt, enter the value as a single block enclosed in braces.
 
-**Minimal sample entry:**
-```
-{
-  name          = "vnet-ai-westeu"
-  address_space = "10.0.0.0/16"
-  subnets = {
-    workload = {
-      name           = "snet-workload"
-      address_prefix = "10.0.1.0/24"
-    }
-  }
-}
-```
+If no value is supplied the landing zone automatically provisions a default VNet named `vnet-ai-westeu` with a `10.0.0.0/16` address space and a `snet-workload` subnet using the `10.0.1.0/24` prefix.
 
 DESCRIPTION
 }
@@ -296,7 +275,7 @@ variable "app_gateway_definition" {
     backend_address_pools = {
       default = {
         name         = "be-default"
-        ip_addresses = toset(["10.0.1.4"])
+        ip_addresses = ["10.0.1.4"]
       }
     }
 
