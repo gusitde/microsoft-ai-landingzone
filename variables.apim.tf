@@ -155,8 +155,8 @@ Configuration object for the Azure API Management service to be deployed.
     - `consent_required` - Whether consent to terms of service is required.
     - `enabled` - Whether terms of service are enabled.
     - `text` - (Optional) The terms of service text.
-- `sku_root` - (Optional) The SKU of the API Management service. Default is "Premium".
-- `sku_capacity` - (Optional) The capacity/scale units of the API Management service. Default is 3.
+- `sku_root` - (Optional) The SKU of the API Management service. Default is "developer".
+- `sku_capacity` - (Optional) The capacity/scale units of the API Management service. Default is 2.
 - `tags` - (Optional) Map of tags to assign to the API Management service.
 - `tenant_access` - (Optional) Tenant access configuration.
   - `enabled` - Whether tenant access is enabled.
