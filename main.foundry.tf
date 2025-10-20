@@ -14,7 +14,7 @@ module "foundry_ptn" {
   cosmosdb_definition                 = local.foundry_cosmosdb_definition
   create_byor                         = var.ai_foundry_definition.create_byor
   create_private_endpoints            = true
-  enable_telemetry                    = var.enable_telemetry
+  enable_telemetry                    = local.core_enable_telemetry
   key_vault_definition                = local.foundry_key_vault_definition
   law_definition                      = var.ai_foundry_definition.law_definition
   private_endpoint_subnet_resource_id = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
