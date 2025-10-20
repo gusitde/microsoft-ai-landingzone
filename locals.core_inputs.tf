@@ -52,12 +52,15 @@ locals {
     if try(value, null) != null
   }
   requested_vnet_subnets                 = try(local.requested_vnet_definition.subnets, {})
-  requested_vnet_subnets_sanitized       = {
+  requested_vnet_subnets_sanitized = {
     for subnet_key, subnet_value in local.requested_vnet_subnets : subnet_key => {
       for attribute_key, attribute_value in subnet_value : attribute_key => attribute_value
       if try(attribute_value, null) != null
     }
-    if try(subnet_value, null) != null
+    if try(subnet_value, null) != null && length({
+      for attribute_key, attribute_value in subnet_value : attribute_key => attribute_value
+      if try(attribute_value, null) != null
+    }) > 0
   }
   requested_vnet_peering_configuration   = try(local.requested_vnet_definition.vnet_peering_configuration, {})
   requested_vnet_peering_configuration_sanitized = {
