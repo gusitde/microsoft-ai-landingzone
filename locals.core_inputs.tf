@@ -46,17 +46,7 @@ locals {
   core_flag_platform_landing_zone = coalesce(var.flag_platform_landing_zone, local.default_flag_platform_landing_zone)
   core_tags = var.tags
 
-  empty_vnet_definition = {
-    name                             = null
-    address_space                    = null
-    ddos_protection_plan_resource_id = null
-    dns_servers                      = null
-    subnets                          = {}
-    vnet_peering_configuration       = null
-    vwan_hub_peering_configuration   = null
-  }
-
-  requested_vnet_definition              = var.vnet_definition != null ? var.vnet_definition : local.empty_vnet_definition
+  requested_vnet_definition              = var.vnet_definition != null ? var.vnet_definition : {}
   requested_vnet_subnets                 = try(local.requested_vnet_definition.subnets, {})
   requested_vnet_peering_configuration   = try(local.requested_vnet_definition.vnet_peering_configuration, {})
   requested_vwan_hub_configuration       = try(local.requested_vnet_definition.vwan_hub_peering_configuration, {})
