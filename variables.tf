@@ -6,9 +6,7 @@ Azure region where all resources should be deployed.
 
 This specifies the primary Azure region for deploying the AI/ML landing zone infrastructure. All resources will be created in this region unless specifically configured otherwise in individual resource definitions.
 
-**Default value:** `westeurope`. Update this if you need to deploy to a different Azure region.
-
-**Input format:** Provide the Azure region name in lowercase without spaces (for example `westeurope`).
+**Input format:** Provide the Azure region name in lowercase without spaces. For example, enter `westeurope`.
 
 **Sample entry:**
 ```
@@ -25,9 +23,8 @@ variable "project_code" {
   description = <<DESCRIPTION
 Short code that identifies the workload or project (2-6 lowercase alphanumeric characters).
 
-This value is used as part of the central naming convention that is applied to every resource created by the landing zone. The value should be stable for the lifetime of the deployment so that resource names remain consistent.
-
-**Default value:** `aiops`. Adjust this to match your project's naming convention if needed.
+This value is used as part of the central naming convention that is applied to every resource created by the landing zone. The
+value should be stable for the lifetime of the deployment so that resource names remain consistent.
 
 **Input format:** Use 2-6 lowercase letters or digits with no spaces or special characters.
 
@@ -50,8 +47,6 @@ variable "environment_code" {
 Environment discriminator for the landing zone (for example tst, qlt, prd).
 
 The environment code participates in the centralized naming scheme and should map to the organisation's release lifecycle nomenclature.
-
-**Default value:** `tst`. Use this to deploy a test environment immediately, or change it to `qlt` or `prd` to target those stages.
 
 **Input format:** Enter one of the supported three-letter environment codes in lowercase (for example `tst`, `qlt`, or `prd`).
 
