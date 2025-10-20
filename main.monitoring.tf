@@ -6,7 +6,7 @@ module "log_analytics_workspace" {
   location                                  = azurerm_resource_group.this.location
   name                                      = local.log_analytics_workspace_name
   resource_group_name                       = azurerm_resource_group.this.name
-  enable_telemetry                          = var.enable_telemetry
+  enable_telemetry                          = local.core_enable_telemetry
   log_analytics_workspace_retention_in_days = var.law_definition.retention
   log_analytics_workspace_sku               = var.law_definition.sku
 }
