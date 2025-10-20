@@ -290,7 +290,52 @@ variable "app_gateway_definition" {
       principal_type                         = optional(string, null)
     })), {})
   })
-  default     = null
+  default = {
+    deploy = true
+
+    backend_address_pools = {
+      default = {
+        name         = "be-default"
+        ip_addresses = toset(["10.0.1.4"])
+      }
+    }
+
+    backend_http_settings = {
+      default = {
+        name     = "be-https"
+        port     = 443
+        protocol = "Https"
+      }
+    }
+
+    frontend_ports = {
+      https = {
+        name = "frontend-https"
+        port = 443
+      }
+    }
+
+    http_listeners = {
+      https = {
+        name               = "https-listener"
+        frontend_port_name = "frontend-https"
+      }
+    }
+
+    request_routing_rules = {
+      https = {
+        name                       = "https-routing-rule"
+        rule_type                  = "Basic"
+        http_listener_name         = "https-listener"
+        backend_address_pool_name  = "be-default"
+        backend_http_settings_name = "be-https"
+        priority                   = 10
+      }
+    }
+
+    tags             = {}
+    role_assignments = {}
+  }
   description = <<DESCRIPTION
 Configuration object for the Azure Application Gateway to be deployed.
 
@@ -412,6 +457,8 @@ Configuration object for the Azure Application Gateway to be deployed.
   - `condition_version` - (Optional) Version of the condition.
   - `delegated_managed_identity_resource_id` - (Optional) Resource ID of the delegated managed identity.
   - `principal_type` - (Optional) Type of the principal (User, Group, ServicePrincipal).
+
+The default object deploys a WAF_v2 Application Gateway with a single HTTPS listener bound to the automatically generated public IP. Traffic is routed to a placeholder backend pool (`10.0.1.4`) using HTTPS settings so that Terraform can execute plans without prompting for additional input. Update these values to reflect the real backend endpoints and routing requirements for your environment.
 DESCRIPTION
 }
 

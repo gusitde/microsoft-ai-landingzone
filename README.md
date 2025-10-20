@@ -64,6 +64,21 @@ To simplify configuration:
 2. Add or override the nested objects that align with the services you want to deploy. For example, to disable the build VM you can set `buildvm_definition = { deploy = false }`, or to supply an existing Log Analytics workspace specify `law_definition = { resource_id = "/subscriptions/.../resourceGroups/.../providers/Microsoft.OperationalInsights/workspaces/..." }`.
 3. Store any sensitive values (such as custom role assignment principal IDs) in secure variable files or use environment variables to avoid committing secrets.
 
+### Default values for non-interactive runs
+
+The repository includes defaults so that `terraform plan` and `terraform apply` can run without prompting for input:
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `location` | `westeurope` | Set in `landingzone.defaults.auto.tfvars` to target the sample region. |
+| `project_code` | `aiops` | Used for CAF-compliant naming of all resources. |
+| `environment_code` | `tst` | Drives environment-specific naming and tagging. |
+| `resource_group_name` | `rg-aiops-tst-weu-001` | Matches the default naming convention for the sample environment. |
+| `waf_policy_definition.managed_rules` | OWASP 3.2 | The WAF policy ships with an OWASP 3.2 managed rule set in Prevention mode. |
+| `app_gateway_definition` | WAF_v2 HTTPS listener with placeholder backend `10.0.1.4` | Provides a fully populated Application Gateway configuration so Terraform does not prompt for required fields. Update the backend IPs/FQDNs to match your workloads. |
+
+These defaults are safe starting points for evaluation. Adjust them (or override them in your own `.tfvars` file) before deploying to production so that the Application Gateway routes traffic to the correct services and aligns with your organisation's standards.
+
 ## Step-by-step deployment
 Follow this sequence to stand up the landing zone:
 
