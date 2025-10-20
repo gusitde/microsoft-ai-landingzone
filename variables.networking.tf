@@ -1,7 +1,7 @@
 variable "vnet_definition" {
   type = object({
     name                             = optional(string)
-    address_space                    = string
+    address_space                    = optional(string, "10.0.0.0/16")
     ddos_protection_plan_resource_id = optional(string)
     dns_servers                      = optional(set(string), [])
     subnets = optional(map(object({
@@ -35,7 +35,7 @@ variable "vnet_definition" {
 Configuration object for the Virtual Network (VNet) to be deployed.
 
 - `name` - (Optional) The name of the Virtual Network. If not provided, a name will be generated.
-- `address_space` - (Required) The address space for the Virtual Network in CIDR notation.
+- `address_space` - (Optional) The address space for the Virtual Network in CIDR notation. Defaults to `10.0.0.0/16`.
 - `ddos_protection_plan_resource_id` - (Optional) Resource ID of the DDoS Protection Plan to associate with the VNet.
 - `dns_servers` - (Optional) Set of custom DNS server IP addresses for the VNet.
 - `subnets` - (Optional) Map of subnet configurations. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
