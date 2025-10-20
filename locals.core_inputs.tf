@@ -49,15 +49,30 @@ locals {
   requested_vnet_definition              = var.vnet_definition != null ? var.vnet_definition : {}
   requested_vnet_definition_sanitized    = {
     for key, value in local.requested_vnet_definition : key => value
-    if value != null
+    if try(value, null) != null
   }
   requested_vnet_subnets                 = try(local.requested_vnet_definition.subnets, {})
+  requested_vnet_subnets_sanitized       = {
+    for subnet_key, subnet_value in local.requested_vnet_subnets : subnet_key => {
+      for attribute_key, attribute_value in subnet_value : attribute_key => attribute_value
+      if try(attribute_value, null) != null
+    }
+    if try(subnet_value, null) != null
+  }
   requested_vnet_peering_configuration   = try(local.requested_vnet_definition.vnet_peering_configuration, {})
+  requested_vnet_peering_configuration_sanitized = {
+    for key, value in local.requested_vnet_peering_configuration : key => value
+    if try(value, null) != null
+  }
   requested_vwan_hub_configuration       = try(local.requested_vnet_definition.vwan_hub_peering_configuration, {})
+  requested_vwan_hub_configuration_sanitized = {
+    for key, value in local.requested_vwan_hub_configuration : key => value
+    if try(value, null) != null
+  }
   requested_dns_servers                  = try(local.requested_vnet_definition.dns_servers, null)
 
-  sanitized_vnet_peering_configuration = local.requested_vnet_peering_configuration != null ? local.requested_vnet_peering_configuration : {}
-  sanitized_vwan_hub_configuration     = local.requested_vwan_hub_configuration != null ? local.requested_vwan_hub_configuration : {}
+  sanitized_vnet_peering_configuration = local.requested_vnet_peering_configuration_sanitized
+  sanitized_vwan_hub_configuration     = local.requested_vwan_hub_configuration_sanitized
   sanitized_dns_servers                = local.requested_dns_servers != null ? local.requested_dns_servers : local.default_vnet_definition.dns_servers
 
   core_vnet_definition = merge(
@@ -67,7 +82,7 @@ locals {
       dns_servers = local.sanitized_dns_servers,
       subnets = merge(
         local.default_vnet_definition.subnets,
-        local.requested_vnet_subnets
+        local.requested_vnet_subnets_sanitized
       ),
       vnet_peering_configuration = merge(
         local.default_vnet_definition.vnet_peering_configuration,
