@@ -1,5 +1,6 @@
 variable "location" {
   type        = string
+  default     = "westeurope"
   description = <<DESCRIPTION
 Azure region where all resources should be deployed.
 
@@ -18,6 +19,7 @@ DESCRIPTION
 # This is required for most resource modules
 variable "project_code" {
   type        = string
+  default     = "aiops"
   description = <<DESCRIPTION
 Short code that identifies the workload or project (2-6 lowercase alphanumeric characters).
 
