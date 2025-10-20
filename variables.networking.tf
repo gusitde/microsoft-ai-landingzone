@@ -59,6 +59,22 @@ Configuration object for the Virtual Network (VNet) to be deployed.
 - `vwan_hub_peering_configuration` - (Optional) Configuration for Virtual WAN hub peering.
   - `peer_vwan_hub_resource_id` - (Optional) Resource ID of the Virtual WAN hub to peer with.
 
+**Input format:** Supply an HCL object that matches the schema above. When using the interactive prompt, enter the value as a single block enclosed in braces.
+
+**Minimal sample entry:**
+```
+{
+  name          = "vnet-ai-westeu"
+  address_space = "10.0.0.0/16"
+  subnets = {
+    workload = {
+      name           = "snet-workload"
+      address_prefix = "10.0.1.0/24"
+    }
+  }
+}
+```
+
 DESCRIPTION
 }
 
