@@ -51,7 +51,7 @@ All behavior is controlled through variables that ship with descriptive document
 
 To simplify configuration:
 
-1. Review `terraform.tfvars`. The repository checks in a sample file that mirrors the built-in defaults so Terraform does not prompt for input. Update the values (or create your own `.tfvars` file) to target a different environment. For example:
+1. Copy `landingzone.defaults.auto.tfvars` (create the file if it does not exist) and provide at least:
    ```hcl
    location         = "eastus"
    project_code     = "aihub"
@@ -70,7 +70,7 @@ The repository includes defaults so that `terraform plan` and `terraform apply` 
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `location` | `westeurope` | Baked into the configuration (and mirrored in `terraform.tfvars`) to target the sample region. |
+| `location` | `westeurope` | Set in `landingzone.defaults.auto.tfvars` to target the sample region. |
 | `project_code` | `aiops` | Used for CAF-compliant naming of all resources. |
 | `environment_code` | `tst` | Drives environment-specific naming and tagging. |
 | `resource_group_name` | `rg-aiops-tst-weu-001` | Matches the default naming convention for the sample environment. |
@@ -93,7 +93,7 @@ Follow this sequence to stand up the landing zone:
    az account set --subscription <subscription-id>
    ```
 3. **Configure backend (optional)** – If using remote state, create the storage account/container and update a `backend` block in `terraform {}` or supply `-backend-config` values during `terraform init`.
-4. **Review the default variables** – The module now falls back to the sample values automatically (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update `terraform.tfvars` or supply your own `.tfvars` file to override them for your environment.
+4. **Review the default variables** – The repository ships with `landingzone.defaults.auto.tfvars`, which pre-populates a CAF-aligned test deployment (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update this file or provide your own `.tfvars` to target a different environment.
 5. **Initialize Terraform**
    ```bash
    terraform init
