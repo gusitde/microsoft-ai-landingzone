@@ -41,7 +41,8 @@ DESCRIPTION
 }
 
 variable "environment_code" {
-  type        = string
+  type    = string
+  default = "tst"
   description = <<DESCRIPTION
 Environment discriminator for the landing zone (for example tst, qlt, prd).
 
