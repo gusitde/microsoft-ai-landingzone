@@ -1,11 +1,22 @@
+variable "map_obj" {
+  description = "Map object to filter null values from"
+  type        = map(any)
+  default     = {}
+}
+
 locals {
-  default_location                 = "westeurope"
-  default_project_code             = "aiops"
-  default_environment_code         = "tst"
-  default_resource_group_name      = "rg-aiops-tst-weu-001"
-  default_resource_group_version   = 1
-  default_enable_telemetry         = true
-  default_flag_platform_landing_zone = true
+  # Removes keys with null values from a map.
+  filter_nulls = {
+    for k, v in var.map_obj : k => v if try(v, null) != null
+  }
+
+  default_location                    = "westeurope"
+  default_project_code                = "aiops"
+  default_environment_code            = "tst"
+  default_resource_group_name         = "rg-aiops-tst-weu-001"
+  default_resource_group_version      = 1
+  default_enable_telemetry            = true
+  default_flag_platform_landing_zone  = true
   default_vnet_definition = {
     name                             = "vnet-ai-westeu"
     address_space                    = "10.0.0.0/16"
@@ -46,55 +57,50 @@ locals {
   core_flag_platform_landing_zone = coalesce(var.flag_platform_landing_zone, local.default_flag_platform_landing_zone)
   core_tags = var.tags
 
-  requested_vnet_definition              = var.vnet_definition != null ? var.vnet_definition : {}
-  requested_vnet_definition_sanitized    = {
-    for key, value in local.requested_vnet_definition : key => value
-    if try(value, null) != null
+  requested_vnet_definition           = var.vnet_definition != null ? var.vnet_definition : local.default_vnet_definition
+  requested_vnet_definition_sanitized = { for k, v in local.requested_vnet_definition : k => v if try(v, null) != null }
+  requested_vnet_subnets              = try(local.requested_vnet_definition.subnets, {})
+
+  requested_vnet_subnet_attributes_sanitized = {
+    for subnet_key, subnet_value in local.requested_vnet_subnets : subnet_key => { for k, v in subnet_value : k => v if try(v, null) != null }
   }
-  requested_vnet_subnets                 = try(local.requested_vnet_definition.subnets, {})
+
   requested_vnet_subnets_sanitized = {
-    for subnet_key, subnet_value in local.requested_vnet_subnets : subnet_key => {
-      for attribute_key, attribute_value in subnet_value : attribute_key => attribute_value
-      if try(attribute_value, null) != null
-    }
-    if try(subnet_value, null) != null && length({
-      for attribute_key, attribute_value in subnet_value : attribute_key => attribute_value
-      if try(attribute_value, null) != null
-    }) > 0
+    for subnet_key, subnet_value in local.requested_vnet_subnet_attributes_sanitized : subnet_key => subnet_value
+    if try(subnet_value, null) != null && length(subnet_value) > 0
   }
-  requested_vnet_peering_configuration   = try(local.requested_vnet_definition.vnet_peering_configuration, {})
-  requested_vnet_peering_configuration_sanitized = {
-    for key, value in local.requested_vnet_peering_configuration : key => value
-    if try(value, null) != null
-  }
-  requested_vwan_hub_configuration       = try(local.requested_vnet_definition.vwan_hub_peering_configuration, {})
-  requested_vwan_hub_configuration_sanitized = {
-    for key, value in local.requested_vwan_hub_configuration : key => value
-    if try(value, null) != null
-  }
-  requested_dns_servers                  = try(local.requested_vnet_definition.dns_servers, null)
+
+  requested_vnet_peering_configuration_sanitized = { for k, v in try(local.requested_vnet_definition.vnet_peering_configuration, {}) : k => v if try(v, null) != null }
+  requested_vwan_hub_configuration_sanitized     = { for k, v in try(local.requested_vnet_definition.vwan_hub_peering_configuration, {}) : k => v if try(v, null) != null }
+  requested_dns_servers                          = try(local.requested_vnet_definition.dns_servers, null)
 
   sanitized_vnet_peering_configuration = local.requested_vnet_peering_configuration_sanitized
   sanitized_vwan_hub_configuration     = local.requested_vwan_hub_configuration_sanitized
   sanitized_dns_servers                = local.requested_dns_servers != null ? local.requested_dns_servers : local.default_vnet_definition.dns_servers
+
+  merged_subnets = merge(
+    local.default_vnet_definition.subnets,
+    local.requested_vnet_subnets_sanitized
+  )
+
+  merged_vnet_peering_configuration = merge(
+    local.default_vnet_definition.vnet_peering_configuration,
+    local.sanitized_vnet_peering_configuration
+  )
+
+  merged_vwan_hub_peering_configuration = merge(
+    local.default_vnet_definition.vwan_hub_peering_configuration,
+    local.sanitized_vwan_hub_configuration
+  )
 
   core_vnet_definition = merge(
     local.default_vnet_definition,
     local.requested_vnet_definition_sanitized,
     {
       dns_servers = local.sanitized_dns_servers,
-      subnets = merge(
-        local.default_vnet_definition.subnets,
-        local.requested_vnet_subnets_sanitized
-      ),
-      vnet_peering_configuration = merge(
-        local.default_vnet_definition.vnet_peering_configuration,
-        local.sanitized_vnet_peering_configuration
-      ),
-      vwan_hub_peering_configuration = merge(
-        local.default_vnet_definition.vwan_hub_peering_configuration,
-        local.sanitized_vwan_hub_configuration
-      )
+      subnets = local.merged_subnets,
+      vnet_peering_configuration = local.merged_vnet_peering_configuration,
+      vwan_hub_peering_configuration = local.merged_vwan_hub_peering_configuration
     }
   )
 }
