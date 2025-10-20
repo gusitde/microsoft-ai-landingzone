@@ -31,6 +31,17 @@ variable "vnet_definition" {
     }), {})
 
   })
+  default = {
+    name          = "vnet-ai-westeu"
+    address_space = "10.0.0.0/16"
+    subnets = {
+      workload = {
+        name           = "snet-workload"
+        address_prefix = "10.0.1.0/24"
+      }
+    }
+  }
+
   description = <<DESCRIPTION
 Configuration object for the Virtual Network (VNet) to be deployed.
 
@@ -38,7 +49,7 @@ Configuration object for the Virtual Network (VNet) to be deployed.
 - `address_space` - (Optional) The address space for the Virtual Network in CIDR notation. Defaults to `10.0.0.0/16`.
 - `ddos_protection_plan_resource_id` - (Optional) Resource ID of the DDoS Protection Plan to associate with the VNet.
 - `dns_servers` - (Optional) Set of custom DNS server IP addresses for the VNet.
-- `subnets` - (Optional) Map of subnet configurations. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
+- `subnets` - (Optional) Map of subnet configurations. Defaults to a `workload` subnet named `snet-workload` with the `10.0.1.0/24` address prefix. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
   - `enabled` - (Optional) Whether the subnet is enabled. Default is true.
   - `name` - (Optional) The name of the subnet. If not provided, a name will be generated.
   - `address_prefix` - (Optional) The address prefix for the subnet in CIDR notation.
