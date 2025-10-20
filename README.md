@@ -3,6 +3,12 @@
 ## Overview
 This repository defines a composable Azure AI landing zone using Terraform and Azure Verified Modules (AVM). It provisions the shared infrastructure required to host secure, enterprise-ready generative AI workloads, including regional networking, governance controls, developer tooling, and platform services. The configuration is split into focused Terraform configuration files so that each workload area (networking, compute, security, data, monitoring, and developer experience) can be customized independently while still following the central naming and tagging policies that the landing zone enforces.
 
+AI landign zone archtetural types:
+
+<img width="2323" height="1386" alt="AI-Landing-Zone-with-platform" src="https://github.com/user-attachments/assets/70afd5a4-99e6-44e2-b10b-22c9c099eee9" />
+<img width="1961" height="1158" alt="AI-Landing-Zone-without-platform" src="https://github.com/user-attachments/assets/62da6994-a99e-4404-b151-c576cfce8907" />
+
+
 ### Key capabilities
 - **Resource organization** – Creates an Azure resource group that follows Cloud Adoption Framework (CAF) naming using the bundled naming module, and applies consistent tagging across the deployment.
 - **Virtual network foundation** – Builds a spoke virtual network with delegated subnets for application workloads, private endpoints, Container Apps, DevOps build resources, Bastion, Azure Firewall, and optional peering or Virtual WAN connectivity to an existing hub network.
