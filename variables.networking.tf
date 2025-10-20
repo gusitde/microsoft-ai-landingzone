@@ -275,7 +275,7 @@ variable "app_gateway_definition" {
     backend_address_pools = {
       default = {
         name         = "be-default"
-        ip_addresses = toset(["10.0.1.4"])
+        ip_addresses = ["10.0.1.4"]
       }
     }
 
