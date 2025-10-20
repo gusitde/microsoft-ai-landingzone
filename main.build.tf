@@ -1,7 +1,7 @@
 module "buildvm" {
   source  = "Azure/avm-res-compute-virtualmachine/azurerm"
   version = "0.19.3"
-  count   = var.flag_platform_landing_zone && var.buildvm_definition.deploy ? 1 : 0
+  count   = local.core_flag_platform_landing_zone && var.buildvm_definition.deploy ? 1 : 0
 
   location = azurerm_resource_group.this.location
   name     = local.build_vm_name
@@ -27,7 +27,7 @@ module "buildvm" {
     }
     password_authentication_disabled = false
   }
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   managed_identities = {
     system_assigned = true
   }

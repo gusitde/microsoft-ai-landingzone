@@ -18,7 +18,7 @@ module "avm_res_keyvault_vault" {
   network_acls                    = var.genai_key_vault_definition.network_acls
   private_endpoints = {
     primary = {
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.key_vault_zone.resource_id] : [local.private_dns_zones_existing.key_vault_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.key_vault_zone.resource_id] : [local.private_dns_zones_existing.key_vault_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
@@ -72,7 +72,7 @@ module "cosmosdb" {
       workspace_resource_id = var.law_definition.resource_id != null ? var.law_definition.resource_id : module.log_analytics_workspace[0].resource_id
     }
   } : {}
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   geo_locations    = local.genai_cosmosdb_secondary_regions
   ip_range_filter = [
     "168.125.123.255",
@@ -88,7 +88,7 @@ module "cosmosdb" {
     "sql" = {
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
       subresource_name              = "sql"
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.cosmos_sql_zone.resource_id] : [local.private_dns_zones_existing.cosmos_sql_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.cosmos_sql_zone.resource_id] : [local.private_dns_zones_existing.cosmos_sql_zone.resource_id]
     }
   }
   public_network_access_enabled = var.genai_cosmosdb_definition.public_network_access_enabled
@@ -119,12 +119,12 @@ module "storage_account" {
       workspace_resource_id = var.law_definition.resource_id != null ? var.law_definition.resource_id : module.log_analytics_workspace[0].resource_id
     }
   } : {}
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   private_endpoints = {
     for endpoint in var.genai_storage_account_definition.endpoint_types :
     endpoint => {
       name                          = module.naming_genai_storage_account_private_endpoints[endpoint].name
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones["storage_${lower(endpoint)}_zone"].resource_id] : [local.private_dns_zones_existing["storage_${lower(endpoint)}_zone"].resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones["storage_${lower(endpoint)}_zone"].resource_id] : [local.private_dns_zones_existing["storage_${lower(endpoint)}_zone"].resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
       subresource_name              = endpoint
     }
@@ -152,10 +152,10 @@ module "containerregistry" {
       workspace_resource_id = var.law_definition.resource_id != null ? var.law_definition.resource_id : module.log_analytics_workspace[0].resource_id
     }
   } : {}
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   private_endpoints = {
     container_registry = {
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.container_registry_zone.resource_id] : [local.private_dns_zones_existing.container_registry_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.container_registry_zone.resource_id] : [local.private_dns_zones_existing.container_registry_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
@@ -176,11 +176,11 @@ module "app_configuration" {
   name                            = local.genai_app_configuration_name
   resource_group_resource_id      = azurerm_resource_group.this.id
   azapi_schema_validation_enabled = false
-  enable_telemetry                = var.enable_telemetry
+  enable_telemetry                = local.core_enable_telemetry
   local_auth_enabled              = var.genai_app_configuration_definition.local_auth_enabled
   private_endpoints = {
     app_configuration = {
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.app_configuration_zone.resource_id] : [local.private_dns_zones_existing.app_configuration_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.app_configuration_zone.resource_id] : [local.private_dns_zones_existing.app_configuration_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
