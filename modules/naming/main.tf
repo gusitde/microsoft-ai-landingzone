@@ -136,7 +136,7 @@ locals {
     container_app_environment             = "azurerm_container_app_environment"
     container_registry                    = "azurerm_container_registry"
     firewall_policy                       = "azurerm_firewall_policy"
-    firewall_policy_rule_collection_group = "azurerm_firewall_policy_rule_collection_group"
+    firewall_policy_rule_collection_group = "general"
     web_application_firewall_policy       = "azurerm_web_application_firewall_policy"
     key_vault                             = "azurerm_key_vault"
     linux_virtual_machine                 = "azurerm_linux_virtual_machine"
