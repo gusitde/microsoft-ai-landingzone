@@ -1,9 +1,19 @@
 variable "location" {
   type        = string
+  default     = "westeurope"
   description = <<DESCRIPTION
 Azure region where all resources should be deployed.
 
 This specifies the primary Azure region for deploying the AI/ML landing zone infrastructure. All resources will be created in this region unless specifically configured otherwise in individual resource definitions.
+
+**Default value:** `westeurope`. Update this if you need to deploy to a different Azure region.
+
+**Input format:** Provide the Azure region name in lowercase without spaces (for example `westeurope`).
+
+**Sample entry:**
+```
+westeurope
+```
 DESCRIPTION
   nullable    = false
 }
@@ -11,11 +21,20 @@ DESCRIPTION
 # This is required for most resource modules
 variable "project_code" {
   type        = string
+  default     = "aiops"
   description = <<DESCRIPTION
 Short code that identifies the workload or project (2-6 lowercase alphanumeric characters).
 
-This value is used as part of the central naming convention that is applied to every resource created by the landing zone. The
-value should be stable for the lifetime of the deployment so that resource names remain consistent.
+This value is used as part of the central naming convention that is applied to every resource created by the landing zone. The value should be stable for the lifetime of the deployment so that resource names remain consistent.
+
+**Default value:** `aiops`. Adjust this to match your project's naming convention if needed.
+
+**Input format:** Use 2-6 lowercase letters or digits with no spaces or special characters.
+
+**Sample entry:**
+```
+aiops
+```
 DESCRIPTION
 
   validation {
@@ -25,17 +44,48 @@ DESCRIPTION
 }
 
 variable "environment_code" {
-  type        = string
+  type    = string
+  default = "tst"
   description = <<DESCRIPTION
 Environment discriminator for the landing zone (for example tst, qlt, prd).
 
 The environment code participates in the centralized naming scheme and should map to the organisation's release lifecycle nomenclature.
+
+**Default value:** `tst`. Use this to deploy a test environment immediately, or change it to `qlt` or `prd` to target those stages.
+
+**Input format:** Enter one of the supported three-letter environment codes in lowercase (for example `tst`, `qlt`, or `prd`).
+
+**Sample entry:**
+```
+tst
+```
 DESCRIPTION
 
   validation {
     condition     = contains(["tst", "qlt", "prd"], lower(var.environment_code))
     error_message = "environment_code must be one of: tst, qlt, prd."
   }
+}
+
+variable "resource_group_name" {
+  type        = string
+  default     = "rg-aiops-tst-weu-001"
+  description = <<DESCRIPTION
+The name of the resource group where all landing zone resources are deployed.
+
+This value must follow your organisation's naming conventions and align with the location, project code, and environment code.
+The provided default matches the built-in defaults (`project_code = aiops`, `environment_code = tst`, and `location = westeurope`).
+
+**Default value:** `rg-aiops-tst-weu-001`. Update this if you need to deploy into an existing resource group with a different name.
+
+**Input format:** Provide the full Azure resource group name in lowercase using hyphens (for example `rg-aiops-tst-weu-001`).
+
+**Sample entry:**
+```
+rg-aiops-tst-weu-001
+```
+DESCRIPTION
+  nullable    = false
 }
 
 variable "resource_group_version" {
