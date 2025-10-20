@@ -78,7 +78,7 @@ Follow this sequence to stand up the landing zone:
    az account set --subscription <subscription-id>
    ```
 3. **Configure backend (optional)** – If using remote state, create the storage account/container and update a `backend` block in `terraform {}` or supply `-backend-config` values during `terraform init`.
-4. **Create your variable file** – Populate `terraform.tfvars` (or another `.tfvars` file) with the values described in the Configuration section.
+4. **Review the default variables** – The repository ships with `landingzone.defaults.auto.tfvars`, which pre-populates a CAF-aligned test deployment (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update this file or provide your own `.tfvars` to target a different environment.
 5. **Initialize Terraform**
    ```bash
    terraform init
