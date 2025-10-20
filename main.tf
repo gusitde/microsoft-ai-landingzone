@@ -9,7 +9,7 @@ module "naming_resource_group" {
 
 resource "azurerm_resource_group" "this" {
   location = var.location
-  name     = module.naming_resource_group.name
+  name     = var.resource_group_name
   tags     = var.tags
 }
 
