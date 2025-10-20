@@ -74,6 +74,12 @@ variable "unique_length" {
   description = "Length of the random suffix when uniqueness is required."
 }
 
+variable "enable_azurecaf" {
+  type        = bool
+  default     = true
+  description = "Set to false to skip the azurecaf provider and rely on deterministic fallback naming."
+}
+
 locals {
   region_abbr = {
     westeurope    = "weu"
@@ -193,9 +199,13 @@ locals {
   # convention even if the azurecaf provider cannot generate a value.
   fallback_base   = lower(replace(join("", concat(local.base_parts, local.tail)), "[^0-9a-z]", ""))
   fallback_length = length(local.fallback_base) < 63 ? length(local.fallback_base) : 63
+
+  use_azurecaf = var.enable_azurecaf
 }
 
 data "azurecaf_name" "this" {
+  count = local.use_azurecaf ? 1 : 0
+
   name          = local.human_name
   resource_type = lookup(local.type_to_azurerm, var.resource, "azurerm_resource_group")
   separator     = "-"
@@ -203,9 +213,10 @@ data "azurecaf_name" "this" {
   random_length = local.unique_auto ? var.unique_length : 0
 }
 
+locals {
+  azurecaf_result = local.use_azurecaf && length(data.azurecaf_name.this) > 0 ? data.azurecaf_name.this[0].result : null
+}
+
 output "name" {
-  value = coalesce(
-    try(data.azurecaf_name.this.result, null),
-    substr(local.fallback_base, 0, local.fallback_length)
-  )
+  value = coalesce(local.azurecaf_result, substr(local.fallback_base, 0, local.fallback_length))
 }
