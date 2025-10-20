@@ -4,11 +4,11 @@ module "ai_lz_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "=0.7.1"
 
-  address_space       = [var.vnet_definition.address_space]
+  address_space       = [local.core_vnet_definition.address_space]
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
-  ddos_protection_plan = var.vnet_definition.ddos_protection_plan_resource_id != null ? {
-    id     = var.vnet_definition.ddos_protection_plan_resource_id
+  ddos_protection_plan = local.core_vnet_definition.ddos_protection_plan_resource_id != null ? {
+    id     = local.core_vnet_definition.ddos_protection_plan_resource_id
     enable = true
   } : null
   diagnostic_settings = {
@@ -19,9 +19,9 @@ module "ai_lz_vnet" {
     }
   }
   dns_servers = {
-    dns_servers = var.vnet_definition.dns_servers
+    dns_servers = local.core_vnet_definition.dns_servers
   }
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   name             = local.vnet_name
   subnets          = local.deployed_subnets
 }
@@ -41,22 +41,22 @@ module "nsgs" {
 module "hub_vnet_peering" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm//modules/peering"
   version = "0.9.0"
-  count   = var.vnet_definition.vnet_peering_configuration.peer_vnet_resource_id != null ? 1 : 0
+  count   = local.core_vnet_definition.vnet_peering_configuration.peer_vnet_resource_id != null ? 1 : 0
 
-  allow_forwarded_traffic      = var.vnet_definition.vnet_peering_configuration.allow_forwarded_traffic
-  allow_gateway_transit        = var.vnet_definition.vnet_peering_configuration.allow_gateway_transit
-  allow_virtual_network_access = var.vnet_definition.vnet_peering_configuration.allow_virtual_network_access
-  create_reverse_peering       = var.vnet_definition.vnet_peering_configuration.create_reverse_peering
-  name                         = coalesce(var.vnet_definition.vnet_peering_configuration.name, module.naming_virtual_network_peering_forward.name)
+  allow_forwarded_traffic      = local.core_vnet_definition.vnet_peering_configuration.allow_forwarded_traffic
+  allow_gateway_transit        = local.core_vnet_definition.vnet_peering_configuration.allow_gateway_transit
+  allow_virtual_network_access = local.core_vnet_definition.vnet_peering_configuration.allow_virtual_network_access
+  create_reverse_peering       = local.core_vnet_definition.vnet_peering_configuration.create_reverse_peering
+  name                         = coalesce(local.core_vnet_definition.vnet_peering_configuration.name, module.naming_virtual_network_peering_forward.name)
   remote_virtual_network = {
-    resource_id = var.vnet_definition.vnet_peering_configuration.peer_vnet_resource_id
+    resource_id = local.core_vnet_definition.vnet_peering_configuration.peer_vnet_resource_id
   }
-  reverse_allow_forwarded_traffic      = var.vnet_definition.vnet_peering_configuration.reverse_allow_forwarded_traffic
-  reverse_allow_gateway_transit        = var.vnet_definition.vnet_peering_configuration.reverse_allow_gateway_transit
-  reverse_allow_virtual_network_access = var.vnet_definition.vnet_peering_configuration.reverse_allow_virtual_network_access
-  reverse_name                         = coalesce(var.vnet_definition.vnet_peering_configuration.reverse_name, module.naming_virtual_network_peering_reverse.name)
-  reverse_use_remote_gateways          = var.vnet_definition.vnet_peering_configuration.reverse_use_remote_gateways
-  use_remote_gateways                  = var.vnet_definition.vnet_peering_configuration.use_remote_gateways
+  reverse_allow_forwarded_traffic      = local.core_vnet_definition.vnet_peering_configuration.reverse_allow_forwarded_traffic
+  reverse_allow_gateway_transit        = local.core_vnet_definition.vnet_peering_configuration.reverse_allow_gateway_transit
+  reverse_allow_virtual_network_access = local.core_vnet_definition.vnet_peering_configuration.reverse_allow_virtual_network_access
+  reverse_name                         = coalesce(local.core_vnet_definition.vnet_peering_configuration.reverse_name, module.naming_virtual_network_peering_reverse.name)
+  reverse_use_remote_gateways          = local.core_vnet_definition.vnet_peering_configuration.reverse_use_remote_gateways
+  use_remote_gateways                  = local.core_vnet_definition.vnet_peering_configuration.use_remote_gateways
   virtual_network = {
     resource_id = module.ai_lz_vnet.resource_id
   }
@@ -65,18 +65,18 @@ module "hub_vnet_peering" {
 #TODO: Add the platform landing zone flag as a secondary decision point for the vwan connection?
 #peer_vwan_hub_resource_id
 resource "azurerm_virtual_hub_connection" "this" {
-  count = var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id != null ? 1 : 0
+  count = local.core_vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id != null ? 1 : 0
 
   name                      = module.naming_virtual_hub_connection.name
   remote_virtual_network_id = module.ai_lz_vnet.resource_id
-  virtual_hub_id            = var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id
+  virtual_hub_id            = local.core_vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id
 }
 
 
 module "firewall_route_table" {
   source  = "Azure/avm-res-network-routetable/azurerm"
   version = "0.4.1"
-  count   = var.flag_platform_landing_zone ? 1 : 0
+  count   = local.core_flag_platform_landing_zone ? 1 : 0
 
   location                      = azurerm_resource_group.this.location
   name                          = local.route_table_name
@@ -95,19 +95,19 @@ module "firewall_route_table" {
 module "fw_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"
-  count   = var.flag_platform_landing_zone ? 1 : 0
+  count   = local.core_flag_platform_landing_zone ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = module.naming_firewall_public_ip.name
   resource_group_name = azurerm_resource_group.this.name
-  enable_telemetry    = var.enable_telemetry
+  enable_telemetry    = local.core_enable_telemetry
   zones               = var.firewall_definition.zones
 }
 
 module "firewall" {
   source  = "Azure/avm-res-network-azurefirewall/azurerm"
   version = "0.3.0"
-  count   = var.flag_platform_landing_zone && var.firewall_definition.deploy ? 1 : 0
+  count   = local.core_flag_platform_landing_zone && var.firewall_definition.deploy ? 1 : 0
 
   firewall_sku_name   = var.firewall_definition.sku
   firewall_sku_tier   = var.firewall_definition.tier
@@ -122,7 +122,7 @@ module "firewall" {
       metric_categories     = ["AllMetrics"]
     }
   }
-  enable_telemetry = var.enable_telemetry
+  enable_telemetry = local.core_enable_telemetry
   firewall_ip_configuration = [
     {
       name                 = "${local.firewall_name}-ipconfig1"
@@ -136,19 +136,19 @@ module "firewall" {
 module "firewall_policy" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm"
   version = "0.3.3"
-  count   = var.flag_platform_landing_zone ? 1 : 0
+  count   = local.core_flag_platform_landing_zone ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = "${local.firewall_name}-policy"
   resource_group_name = azurerm_resource_group.this.name
-  enable_telemetry    = var.enable_telemetry
+  enable_telemetry    = local.core_enable_telemetry
 }
 
 #TODO: add application rule collection support
 module "firewall_network_rule_collection_group" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
   version = "0.3.3"
-  count   = var.flag_platform_landing_zone ? 1 : 0
+  count   = local.core_flag_platform_landing_zone ? 1 : 0
 
   firewall_policy_rule_collection_group_firewall_policy_id      = module.firewall_policy[0].resource_id
   firewall_policy_rule_collection_group_name                    = local.firewall_policy_rule_collection_group_name
@@ -160,12 +160,12 @@ module "firewall_network_rule_collection_group" {
 module "azure_bastion" {
   source  = "Azure/avm-res-network-bastionhost/azurerm"
   version = "0.7.2"
-  count   = var.flag_platform_landing_zone && var.bastion_definition.deploy ? 1 : 0
+  count   = local.core_flag_platform_landing_zone && var.bastion_definition.deploy ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = local.bastion_name
   resource_group_name = azurerm_resource_group.this.name
-  enable_telemetry    = var.enable_telemetry
+  enable_telemetry    = local.core_enable_telemetry
   ip_configuration = {
     subnet_id = module.ai_lz_vnet.subnets["AzureBastionSubnet"].resource_id
   }
@@ -177,11 +177,11 @@ module "azure_bastion" {
 module "private_dns_zones" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
   version  = "0.3.4"
-  for_each = var.flag_platform_landing_zone ? local.private_dns_zones : {}
+  for_each = local.core_flag_platform_landing_zone ? local.private_dns_zones : {}
 
   domain_name           = each.value.name
   resource_group_name   = azurerm_resource_group.this.name
-  enable_telemetry      = var.enable_telemetry
+  enable_telemetry      = local.core_enable_telemetry
   virtual_network_links = local.virtual_network_links
 
   depends_on = [module.hub_vnet_peering]
@@ -195,7 +195,7 @@ module "app_gateway_waf_policy" {
   managed_rules       = var.waf_policy_definition.managed_rules #local.web_application_firewall_managed_rules
   name                = local.web_application_firewall_policy_name
   resource_group_name = azurerm_resource_group.this.name
-  enable_telemetry    = var.enable_telemetry
+  enable_telemetry    = local.core_enable_telemetry
   policy_settings     = var.waf_policy_definition.policy_settings
 }
 
@@ -227,7 +227,7 @@ module "application_gateway" {
       metric_categories     = ["AllMetrics"]
     }
   }
-  enable_telemetry            = var.enable_telemetry
+  enable_telemetry            = local.core_enable_telemetry
   http2_enable                = var.app_gateway_definition.http2_enable
   probe_configurations        = var.app_gateway_definition.probe_configurations
   public_ip_name              = module.naming_application_gateway_public_ip.name

@@ -1,23 +1,23 @@
 data "azapi_client_config" "telemetry" {
-  count = var.enable_telemetry ? 1 : 0
+  count = local.core_enable_telemetry ? 1 : 0
 }
 
 data "modtm_module_source" "telemetry" {
-  count = var.enable_telemetry ? 1 : 0
+  count = local.core_enable_telemetry ? 1 : 0
 
   module_path = path.module
 }
 
 locals {
-  main_location = var.location
+  main_location = local.core_location
 }
 
 resource "random_uuid" "telemetry" {
-  count = var.enable_telemetry ? 1 : 0
+  count = local.core_enable_telemetry ? 1 : 0
 }
 
 resource "modtm_telemetry" "telemetry" {
-  count = var.enable_telemetry ? 1 : 0
+  count = local.core_enable_telemetry ? 1 : 0
 
   tags = merge({
     subscription_id = one(data.azapi_client_config.telemetry).subscription_id
@@ -41,7 +41,7 @@ locals {
 }
 
 locals {
-  avm_azapi_headers = !var.enable_telemetry ? {} : (local.fork_avm ? {
+  avm_azapi_headers = !local.core_enable_telemetry ? {} : (local.fork_avm ? {
     fork_avm  = "true"
     random_id = one(random_uuid.telemetry).result
     } : {

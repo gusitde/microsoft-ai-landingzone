@@ -13,7 +13,7 @@ module "container_apps_managed_environment" {
       log_analytics_destination_type = "AzureDiagnostics"
     }
   } : {}
-  enable_telemetry                   = var.enable_telemetry
+  enable_telemetry                   = local.core_enable_telemetry
   infrastructure_resource_group_name = "rg-managed-${azurerm_resource_group.this.name}"
   infrastructure_subnet_id           = module.ai_lz_vnet.subnets["ContainerAppEnvironmentSubnet"].resource_id
   internal_load_balancer_enabled     = var.container_app_environment_definition.internal_load_balancer_enabled

@@ -18,13 +18,13 @@ module "apim" {
       workspace_resource_id = var.law_definition.resource_id != null ? var.law_definition.resource_id : module.log_analytics_workspace[0].resource_id
     }
   }
-  enable_telemetry          = var.enable_telemetry
+  enable_telemetry          = local.core_enable_telemetry
   hostname_configuration    = var.apim_definition.hostname_configuration
   min_api_version           = var.apim_definition.min_api_version
   notification_sender_email = var.apim_definition.notification_sender_email
   private_endpoints = {
     endpoint1 = {
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.apim_zone.resource_id] : [local.private_dns_zones_existing.apim_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.apim_zone.resource_id] : [local.private_dns_zones_existing.apim_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
