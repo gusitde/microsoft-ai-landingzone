@@ -1,6 +1,6 @@
 variable "location" {
   type        = string
-  default     = "westeurope"
+  default     = null
   description = <<DESCRIPTION
 Azure region where all resources should be deployed.
 
@@ -13,13 +13,13 @@ This specifies the primary Azure region for deploying the AI/ML landing zone inf
 westeurope
 ```
 DESCRIPTION
-  nullable    = false
+  nullable    = true
 }
 
 # This is required for most resource modules
 variable "project_code" {
   type        = string
-  default     = "aiops"
+  default     = null
   description = <<DESCRIPTION
 Short code that identifies the workload or project (2-6 lowercase alphanumeric characters).
 
@@ -35,14 +35,14 @@ aiops
 DESCRIPTION
 
   validation {
-    condition     = can(regex("^[a-z0-9]{2,6}$", lower(var.project_code)))
+    condition     = var.project_code == null || can(regex("^[a-z0-9]{2,6}$", lower(var.project_code)))
     error_message = "project_code must be 2-6 lowercase letters or digits."
   }
 }
 
 variable "environment_code" {
   type    = string
-  default = "tst"
+  default = null
   description = <<DESCRIPTION
 Environment discriminator for the landing zone (for example tst, qlt, prd).
 
@@ -57,14 +57,14 @@ tst
 DESCRIPTION
 
   validation {
-    condition     = contains(["tst", "qlt", "prd"], lower(var.environment_code))
+    condition     = var.environment_code == null || contains(["tst", "qlt", "prd"], lower(var.environment_code))
     error_message = "environment_code must be one of: tst, qlt, prd."
   }
 }
 
 variable "resource_group_name" {
   type        = string
-  default     = "rg-aiops-tst-weu-001"
+  default     = null
   description = <<DESCRIPTION
 The name of the resource group where all landing zone resources are deployed.
 
@@ -80,12 +80,12 @@ The provided default matches the built-in defaults (`project_code = aiops`, `env
 rg-aiops-tst-weu-001
 ```
 DESCRIPTION
-  nullable    = false
+  nullable    = true
 }
 
 variable "resource_group_version" {
   type        = number
-  default     = 1
+  default     = null
   description = <<DESCRIPTION
 Incrementing version number applied to the resource group when generating the CAF-compliant name.
 
@@ -93,25 +93,25 @@ Increase this number when a resource group rename is required because the Azure 
 DESCRIPTION
 
   validation {
-    condition     = var.resource_group_version >= 1 && var.resource_group_version <= 99
+    condition     = var.resource_group_version == null || (var.resource_group_version >= 1 && var.resource_group_version <= 99)
     error_message = "resource_group_version must be between 1 and 99."
   }
 }
 
 variable "enable_telemetry" {
   type        = bool
-  default     = true
+  default     = null
   description = <<DESCRIPTION
 This variable controls whether or not telemetry is enabled for the module.
 For more information see <https://aka.ms/avm/telemetryinfo>.
 If it is set to false, then no telemetry will be collected.
 DESCRIPTION
-  nullable    = false
+  nullable    = true
 }
 
 variable "flag_platform_landing_zone" {
   type        = bool
-  default     = true
+  default     = null
   description = <<DESCRIPTION
 Flag to indicate if the platform landing zone is enabled.
 

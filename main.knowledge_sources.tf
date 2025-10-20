@@ -12,12 +12,12 @@ module "search_service" {
       workspace_resource_id = var.law_definition.resource_id != null ? var.law_definition.resource_id : module.log_analytics_workspace[0].resource_id
     }
   } : {}
-  enable_telemetry             = var.enable_telemetry # see variables.tf
+  enable_telemetry             = local.core_enable_telemetry # see variables.tf
   local_authentication_enabled = var.ks_ai_search_definition.local_authentication_enabled
   partition_count              = var.ks_ai_search_definition.partition_count
   private_endpoints = {
     primary = {
-      private_dns_zone_resource_ids = var.flag_platform_landing_zone ? [module.private_dns_zones.ai_search_zone.resource_id] : [local.private_dns_zones_existing.ai_search_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.ai_search_zone.resource_id] : [local.private_dns_zones_existing.ai_search_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
@@ -42,10 +42,10 @@ resource "azapi_resource" "bing_grounding" {
       name = var.ks_bing_grounding_definition.sku
     }
   }
-  create_headers            = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  delete_headers            = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  read_headers              = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
+  create_headers            = local.core_enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
+  delete_headers            = local.core_enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
+  read_headers              = local.core_enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   schema_validation_enabled = false
   tags                      = var.ks_bing_grounding_definition.tags
-  update_headers            = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
+  update_headers            = local.core_enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
 }
