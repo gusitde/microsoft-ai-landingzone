@@ -16,7 +16,7 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 # Track the checked-in defaults so `terraform plan` runs non-interactively out of the box.
-!landingzone.defaults.auto.tfvars
+!terraform.tfvars
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
