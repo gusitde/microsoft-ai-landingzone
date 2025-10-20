@@ -3,8 +3,6 @@
 # Update them as needed to target a different environment.
 #
 # Uncomment and populate the subscription ID if Terraform cannot infer it from your Azure login context.
-# You can automatically generate this file with ./scripts/configure-subscription.sh (Linux/macOS)
-# or ./scripts/configure-subscription.ps1 (Windows PowerShell).
 # subscription_id = "00000000-0000-0000-0000-000000000000"
 location                 = "westeurope"
 project_code             = "aiops"

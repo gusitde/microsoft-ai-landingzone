@@ -99,15 +99,6 @@ Follow this sequence to stand up the landing zone:
    # or in a .tfvars file
    subscription_id = "<subscription-id>"
    ```
-   After selecting the subscription, populate a git-ignored `landingzone.subscription.auto.tfvars` file so Terraform can always initialise the `azurerm` provider with the correct subscription:
-   ```bash
-   ./scripts/configure-subscription.sh
-   ```
-   On Windows PowerShell:
-   ```powershell
-   ./scripts/configure-subscription.ps1
-   ```
-   The helper script reuses your current Azure CLI context (or accepts a subscription ID argument) and writes the value to `landingzone.subscription.auto.tfvars`.
 3. **Configure backend (optional)** – If using remote state, create the storage account/container and update a `backend` block in `terraform {}` or supply `-backend-config` values during `terraform init`.
 4. **Review the default variables** – The repository ships with `landingzone.defaults.auto.tfvars`, which pre-populates a CAF-aligned test deployment (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update this file or provide your own `.tfvars` to target a different environment.
 5. **Initialize Terraform**

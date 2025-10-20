@@ -120,8 +120,6 @@ select the subscription automatically. Supplying the subscription ID avoids erro
 `subscription ID could not be determined and was not specified` during provider initialization.
 
 Leave the value unset (or `null`) to continue using the ambient Azure authentication context.
-You can populate the value automatically by running `./scripts/configure-subscription.sh` (Linux/macOS)
-or `./scripts/configure-subscription.ps1` (Windows PowerShell), which capture the currently selected Azure CLI subscription.
 DESCRIPTION
   nullable    = true
 
