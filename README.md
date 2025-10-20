@@ -47,6 +47,7 @@ Before you deploy the landing zone, ensure the following:
 All behavior is controlled through variables that ship with descriptive documentation. Some important entry points include:
 
 - `variables.tf` – Sets global values such as `location`, `project_code`, `environment_code`, `tags`, and feature flags for telemetry and platform landing zone integration.
+- `subscription_id` (in `variables.tf`) – Optional override that pins the Azure subscription used by the `azurerm` provider when the CLI or environment cannot select it automatically.
 - The feature-specific files (`variables.genai_services.tf`, `variables.networking.tf`, `variables.jumpvm.tf`, etc.) – Define nested objects where each major service can be toggled on/off (`deploy`), renamed, and customized with security, networking, SKU, and diagnostic options.
 
 To simplify configuration:
@@ -91,6 +92,12 @@ Follow this sequence to stand up the landing zone:
    ```bash
    az login
    az account set --subscription <subscription-id>
+   ```
+   If you are running Terraform from automation or an environment without the Azure CLI, set the `ARM_SUBSCRIPTION_ID` environment variable or supply the new `subscription_id` input variable instead:
+   ```bash
+   export ARM_SUBSCRIPTION_ID=<subscription-id>
+   # or in a .tfvars file
+   subscription_id = "<subscription-id>"
    ```
 3. **Configure backend (optional)** – If using remote state, create the storage account/container and update a `backend` block in `terraform {}` or supply `-backend-config` values during `terraform init`.
 4. **Review the default variables** – The repository ships with `landingzone.defaults.auto.tfvars`, which pre-populates a CAF-aligned test deployment (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update this file or provide your own `.tfvars` to target a different environment.

@@ -109,6 +109,26 @@ DESCRIPTION
   nullable    = true
 }
 
+variable "subscription_id" {
+  type        = string
+  default     = null
+  description = <<DESCRIPTION
+Optional Azure subscription ID that Terraform should target when running this module.
+
+Provide this value if the deployment environment cannot rely on the Azure CLI, environment variables, or managed identity to
+select the subscription automatically. Supplying the subscription ID avoids errors such as
+`subscription ID could not be determined and was not specified` during provider initialization.
+
+Leave the value unset (or `null`) to continue using the ambient Azure authentication context.
+DESCRIPTION
+  nullable    = true
+
+  validation {
+    condition     = var.subscription_id == null || can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", trimspace(var.subscription_id)))
+    error_message = "subscription_id must be a valid GUID in the format 00000000-0000-0000-0000-000000000000."
+  }
+}
+
 variable "flag_platform_landing_zone" {
   type        = bool
   default     = null
