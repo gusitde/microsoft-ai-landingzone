@@ -62,6 +62,27 @@ DESCRIPTION
   }
 }
 
+variable "resource_group_name" {
+  type        = string
+  default     = "rg-aiops-tst-weu-001"
+  description = <<DESCRIPTION
+The name of the resource group where all landing zone resources are deployed.
+
+This value must follow your organisation's naming conventions and align with the location, project code, and environment code.
+The provided default matches the built-in defaults (`project_code = aiops`, `environment_code = tst`, and `location = westeurope`).
+
+**Default value:** `rg-aiops-tst-weu-001`. Update this if you need to deploy into an existing resource group with a different name.
+
+**Input format:** Provide the full Azure resource group name in lowercase using hyphens (for example `rg-aiops-tst-weu-001`).
+
+**Sample entry:**
+```
+rg-aiops-tst-weu-001
+```
+DESCRIPTION
+  nullable    = false
+}
+
 variable "resource_group_version" {
   type        = number
   default     = 1
