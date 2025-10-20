@@ -47,6 +47,10 @@ locals {
   core_tags = var.tags
 
   requested_vnet_definition              = var.vnet_definition != null ? var.vnet_definition : {}
+  requested_vnet_definition_sanitized    = {
+    for key, value in local.requested_vnet_definition : key => value
+    if value != null
+  }
   requested_vnet_subnets                 = try(local.requested_vnet_definition.subnets, {})
   requested_vnet_peering_configuration   = try(local.requested_vnet_definition.vnet_peering_configuration, {})
   requested_vwan_hub_configuration       = try(local.requested_vnet_definition.vwan_hub_peering_configuration, {})
@@ -58,7 +62,7 @@ locals {
 
   core_vnet_definition = merge(
     local.default_vnet_definition,
-    local.requested_vnet_definition,
+    local.requested_vnet_definition_sanitized,
     {
       dns_servers = local.sanitized_dns_servers,
       subnets = merge(
