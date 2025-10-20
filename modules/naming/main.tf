@@ -188,6 +188,11 @@ locals {
   human_name = join("-", concat(local.base_parts, local.tail))
 
   unique_auto = var.unique == null ? contains(local.needs_unique, var.resource) : var.unique
+
+  # Provide a deterministic fallback name that honours the base naming
+  # convention even if the azurecaf provider cannot generate a value.
+  fallback_base   = lower(replace(join("", concat(local.base_parts, local.tail)), "[^0-9a-z]", ""))
+  fallback_length = length(local.fallback_base) < 63 ? length(local.fallback_base) : 63
 }
 
 data "azurecaf_name" "this" {
@@ -199,5 +204,8 @@ data "azurecaf_name" "this" {
 }
 
 output "name" {
-  value = data.azurecaf_name.this.result
+  value = coalesce(
+    try(data.azurecaf_name.this.result, null),
+    substr(local.fallback_base, 0, local.fallback_length)
+  )
 }
