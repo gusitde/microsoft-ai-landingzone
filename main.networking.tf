@@ -234,9 +234,10 @@ module "application_gateway" {
   redirect_configuration      = var.app_gateway_definition.redirect_configuration
   rewrite_rule_set            = var.app_gateway_definition.rewrite_rule_set
   role_assignments            = local.application_gateway_role_assignments
-  managed_identities          = local.deploy_app_gateway ? {
-    user_assigned_resource_ids = [azurerm_user_assigned_identity.appgw_uami[0].id]
-  } : {}
+  identity = local.deploy_app_gateway ? {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.appgw_uami[0].id]
+  } : null
   sku                         = var.app_gateway_definition.sku
   ssl_certificates            = local.app_gateway_ssl_certificates
   ssl_policy                  = var.app_gateway_definition.ssl_policy
