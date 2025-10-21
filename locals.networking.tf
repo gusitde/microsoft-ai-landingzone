@@ -23,7 +23,7 @@ locals {
       secret_id           = null,
       secret_name         = local.app_gateway_key_vault_default_secret_name,
     },
-    local.app_gateway_key_vault_integration_input
+    app_gateway_key_vault_integration_input
   )
   app_gateway_key_vault_name = try(local.app_gateway_key_vault_integration.name, null)
   app_gateway_key_vault_resource_group_name = try(local.app_gateway_key_vault_integration.resource_group_name, null)
