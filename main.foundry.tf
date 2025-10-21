@@ -3,7 +3,7 @@ module "foundry_ptn" {
   version = "0.6.0"
 
   #configure the base resource
-  base_name                  = module.naming_ai_foundry_account.name
+  base_name                  = local.ai_foundry_base_name
   location                   = azurerm_resource_group.this.location
   resource_group_resource_id = azurerm_resource_group.this.id
   #pass through the resource definitions
