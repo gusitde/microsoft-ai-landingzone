@@ -8,6 +8,50 @@ locals {
     try(var.app_gateway_definition.role_assignments, {})
   )
   application_gateway_role_assignments_base = {}
+  deploy_app_gateway = try(var.app_gateway_definition.deploy, true)
+  app_gateway_frontend_ports = coalesce(try(var.app_gateway_definition.frontend_ports, null), {})
+  app_gateway_https_frontend_port_names = [
+    for frontend in values(local.app_gateway_frontend_ports) :
+    frontend.name if try(frontend.port, null) == 443
+  ]
+  app_gateway_ssl_certificates = length(coalesce(try(var.app_gateway_definition.ssl_certificates, null), {})) > 0 ? {
+    for cert_key, cert_value in coalesce(try(var.app_gateway_definition.ssl_certificates, null), {}) :
+    cert_key => merge(
+      cert_value,
+      (
+        try(cert_value.name, "") == "tls-cert" || try(cert_value.key_vault_secret_id, null) == "kv-aiops-tst-weu-001/appgw-cert"
+      ) ? {
+        key_vault_secret_id = local.appgw_cert_versionless_secret_id
+      } : (
+        (try(cert_value.key_vault_secret_id, null) != null && !startswith(lower(cert_value.key_vault_secret_id), "https://")) ? {
+          key_vault_secret_id = local.appgw_cert_versionless_secret_id
+        } : {}
+      )
+    )
+  } : {
+    tls = {
+      name                = "tls-cert"
+      key_vault_secret_id = local.appgw_cert_versionless_secret_id
+    }
+  }
+  app_gateway_primary_ssl_certificate_name = try(
+    one([
+      for cert in values(local.app_gateway_ssl_certificates) : cert.name
+      if lower(cert.name) == "tls-cert"
+    ]),
+    try(values(local.app_gateway_ssl_certificates)[0].name, "tls-cert")
+  )
+  app_gateway_http_listeners = {
+    for listener_key, listener_value in coalesce(try(var.app_gateway_definition.http_listeners, null), {}) :
+    listener_key => merge(
+      listener_value,
+      contains(local.app_gateway_https_frontend_port_names, try(listener_value.frontend_port_name, "")) || lower(try(listener_value.protocol, "")) == "https" ? {
+        protocol             = "Https"
+        ssl_certificate_name = local.app_gateway_primary_ssl_certificate_name
+        require_sni          = true
+      } : {}
+    )
+  }
   bastion_name = coalesce(
     try(var.bastion_definition.name, null),
     module.naming_bastion_host.name
@@ -90,7 +134,11 @@ locals {
       name = "privatelink.cognitiveservices.azure.com"
     }
   }
-  private_dns_zones = local.core_flag_platform_landing_zone == true ? local.private_dns_zone_map : {}
+  private_dns_zone_map_without_key_vault = {
+    for key, value in local.private_dns_zone_map :
+    key => value if key != "key_vault_zone"
+  }
+  private_dns_zones = local.core_flag_platform_landing_zone == true ? local.private_dns_zone_map_without_key_vault : {}
   private_dns_zones_existing = local.core_flag_platform_landing_zone == false ? { for key, value in local.private_dns_zone_map : key => {
     name        = value.name
     resource_id = "${coalesce(var.private_dns_zones.existing_zones_resource_group_resource_id, "notused")}/providers/Microsoft.Network/privateDnsZones/${value.name}" #TODO: determine if there is a more elegant way to do this while avoiding errors
