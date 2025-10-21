@@ -281,12 +281,6 @@ variable "app_gateway_definition" {
   default = {
     deploy = true
 
-    key_vault_integration = {
-      name                = "kv-aiops-tst-weu-001"
-      resource_group_name = "azr-tapai-tst-weu-rg-001"
-      secret_name         = "appgw-cert"
-    }
-
     backend_address_pools = {
       default = {
         name         = "be-default"
@@ -316,13 +310,6 @@ variable "app_gateway_definition" {
         protocol             = "Https"
         ssl_certificate_name = "tls-cert"
         require_sni          = false
-      }
-    }
-
-    ssl_certificates = {
-      default = {
-        name                = "tls-cert"
-        key_vault_secret_id = "https://kv-aiops-tst-weu-001.vault.azure.net/secrets/appgw-cert"
       }
     }
 
