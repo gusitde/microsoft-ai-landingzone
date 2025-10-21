@@ -33,3 +33,51 @@ tags = null
 bastion_definition = {
   deploy = true
 }
+
+# Default Application Gateway configuration. Update the IPs/FQDNs or names to align with your workloads.
+app_gateway_definition = {
+  name = "agw-aiops-tst-weu-001"
+
+  backend_address_pools = {
+    default = {
+      name         = "be-default"
+      ip_addresses = ["10.0.1.4"]
+    }
+  }
+
+  backend_http_settings = {
+    default = {
+      name     = "be-https"
+      port     = 443
+      protocol = "Https"
+    }
+  }
+
+  frontend_ports = {
+    https = {
+      name = "port-443"
+      port = 443
+    }
+  }
+
+  http_listeners = {
+    https = {
+      name                 = "https-listener"
+      frontend_port_name   = "port-443"
+      protocol             = "Https"
+      ssl_certificate_name = "tls-cert"
+      require_sni          = false
+    }
+  }
+
+  request_routing_rules = {
+    https = {
+      name                       = "https-routing-rule"
+      rule_type                  = "Basic"
+      http_listener_name         = "https-listener"
+      backend_address_pool_name  = "be-default"
+      backend_http_settings_name = "be-https"
+      priority                   = 10
+    }
+  }
+}
