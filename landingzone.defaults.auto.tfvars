@@ -13,7 +13,7 @@ enable_telemetry         = true
 flag_platform_landing_zone = true
 
 # Common VM sizes for West Europe deployments: Standard_B2ms, Standard_D2ads_v5, Standard_D2as_v5.
-vm_size = "Standard_B2ms"
+vm_size = "Standard_D2ds_v6"
 
 vnet_definition = {
   name          = "vnet-ai-westeu"
