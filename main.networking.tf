@@ -203,7 +203,7 @@ module "app_gateway_waf_policy" {
 module "application_gateway" {
   source  = "Azure/avm-res-network-applicationgateway/azurerm"
   version = "0.4.2"
-  count   = var.app_gateway_definition.deploy ? 1 : 0
+  count   = local.deploy_app_gateway ? 1 : 0
 
   backend_address_pools = var.app_gateway_definition.backend_address_pools
   backend_http_settings = var.app_gateway_definition.backend_http_settings
@@ -211,7 +211,7 @@ module "application_gateway" {
   gateway_ip_configuration = {
     subnet_id = module.ai_lz_vnet.subnets["AppGatewaySubnet"].resource_id
   }
-  http_listeners                     = var.app_gateway_definition.http_listeners
+  http_listeners                     = local.app_gateway_http_listeners
   location                           = azurerm_resource_group.this.location
   name                               = local.application_gateway_name
   request_routing_rules              = var.app_gateway_definition.request_routing_rules
@@ -234,8 +234,12 @@ module "application_gateway" {
   redirect_configuration      = var.app_gateway_definition.redirect_configuration
   rewrite_rule_set            = var.app_gateway_definition.rewrite_rule_set
   role_assignments            = local.application_gateway_role_assignments
+  identity = local.deploy_app_gateway ? {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.appgw_uami[0].id]
+  } : null
   sku                         = var.app_gateway_definition.sku
-  ssl_certificates            = var.app_gateway_definition.ssl_certificates
+  ssl_certificates            = local.app_gateway_ssl_certificates
   ssl_policy                  = var.app_gateway_definition.ssl_policy
   ssl_profile                 = var.app_gateway_definition.ssl_profile
   tags                        = var.app_gateway_definition.tags

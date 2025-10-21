@@ -33,7 +33,7 @@ locals {
   ) }
   foundry_key_vault_definition = { for key, value in var.ai_foundry_definition.key_vault_definition : key => merge(
     var.ai_foundry_definition.key_vault_definition[key], {
-      private_dns_zone_resource_id = local.core_flag_platform_landing_zone ? module.private_dns_zones.key_vault_zone.resource_id : local.private_dns_zones_existing.key_vault_zone.resource_id
+      private_dns_zone_resource_id = local.core_flag_platform_landing_zone ? azurerm_private_dns_zone.kv[0].id : local.private_dns_zones_existing.key_vault_zone.resource_id
     }
   ) }
   foundry_storage_account_definition = { for key, value in var.ai_foundry_definition.storage_account_definition : key => merge(
