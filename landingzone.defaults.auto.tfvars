@@ -28,3 +28,8 @@ vnet_definition = {
 
 # No tags are assigned by default. Provide a map like { costcenter = "1234" } if required.
 tags = null
+
+# Toggle deployment of Azure Bastion. Set `deploy = false` to skip provisioning the service.
+bastion_definition = {
+  deploy = true
+}
