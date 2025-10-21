@@ -3,7 +3,7 @@
 ## Overview
 This repository defines a composable Azure AI landing zone using Terraform and Azure Verified Modules (AVM). It provisions the shared infrastructure required to host secure, enterprise-ready generative AI workloads, including regional networking, governance controls, developer tooling, and platform services. The configuration is split into focused Terraform configuration files so that each workload area (networking, compute, security, data, monitoring, and developer experience) can be customized independently while still following the central naming and tagging policies that the landing zone enforces.
 
-AI landign zone archtetural types:
+AI landing zone architectural types:
 
 <img width="2323" height="1386" alt="AI-Landing-Zone-with-platform" src="https://github.com/user-attachments/assets/70afd5a4-99e6-44e2-b10b-22c9c099eee9" />
 <img width="1961" height="1158" alt="AI-Landing-Zone-without-platform" src="https://github.com/user-attachments/assets/62da6994-a99e-4404-b151-c576cfce8907" />
@@ -27,6 +27,7 @@ The top-level Terraform files are organized by functional area. Some highlights 
 | `main.tf` | Core resource group, naming convention, and shared data sources. |
 | `main.networking.tf` | Virtual network, subnets, firewalls, DNS zones, Bastion, and connectivity. |
 | `main.genai_services.tf` | Key Vault, Cosmos DB, Storage, Container Apps, Container Registry, App Configuration, and supporting role assignments. |
+| `main.genai_app_resources.tf` | Opinionated defaults for Azure Container Apps environments, Log Analytics dependencies, and application plane integrations consumed by the GenAI services. |
 | `main.knowledge_sources.tf` | Azure AI Search and Bing Grounding services. |
 | `main.foundry.tf` | Azure AI Foundry pattern module with private endpoints and purge controls. |
 | `main.apim.tf` | Azure API Management service for secure API exposure. |
@@ -80,47 +81,117 @@ The repository includes defaults so that `terraform plan` and `terraform apply` 
 
 These defaults are safe starting points for evaluation. Adjust them (or override them in your own `.tfvars` file) before deploying to production so that the Application Gateway routes traffic to the correct services and aligns with your organisation's standards.
 
-## Step-by-step deployment
-Follow this sequence to stand up the landing zone:
+## Build the environment
+The following end-to-end workflow captures the recommended steps for standing up or iterating on an environment. It expands on the earlier prerequisites so that a new operator can move from an empty workstation to a fully provisioned landing zone.
 
-1. **Clone the repository**
+1. **Prepare your workstation**
+   - **macOS (Homebrew)**
+     ```bash
+     brew update
+     brew tap hashicorp/tap
+     brew install hashicorp/tap/terraform azure-cli jq make
+     ```
+   - **Ubuntu/Debian**
+     ```bash
+     sudo apt-get update
+     sudo apt-get install -y gnupg software-properties-common curl unzip make
+     curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+     echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+     sudo apt-get update && sudo apt-get install -y terraform azure-cli jq
+     ```
+   - **Windows** – Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli#install-terraform), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli-windows?tabs=azure-cli), and optionally [Windows Subsystem for Linux](https://learn.microsoft.com/windows/wsl/install) to run the Bash helper scripts. PowerShell equivalents are provided when Bash is unavailable.
+
+2. **Clone and review the repository**
    ```bash
    git clone https://github.com/<your-org>/microsoft-ai-landingzone.git
    cd microsoft-ai-landingzone
+   git pull --ff-only
    ```
-2. **Install dependencies** – Ensure Terraform and the Azure CLI meet the prerequisites above, then sign in:
+   Keeping your fork synchronized (`git pull --ff-only`) ensures you receive the latest module wiring, defaults, and bug fixes.
+
+3. **Authenticate with Azure** – Sign in using the Azure CLI (or the authentication approach required by your automation environment):
    ```bash
    az login
    az account set --subscription <subscription-id>
    ```
-   If you are running Terraform from automation or an environment without the Azure CLI, set the `ARM_SUBSCRIPTION_ID` environment variable or supply the new `subscription_id` input variable instead:
+   - If the deployment account is service-principal based, export the ARM provider environment variables (`ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and optionally `ARM_SUBSCRIPTION_ID`).
+   - To persist the subscription ID in a local `.tfvars`, run the helper script:
+     ```bash
+     ./scripts/configure-subscription.sh            # Bash
+     # or
+     pwsh ./scripts/configure-subscription.ps1      # PowerShell
+     ```
+     The script creates `landingzone.subscription.auto.tfvars` (Git ignored) with the subscription identifier so that future `terraform` commands target the correct tenant without re-exporting environment variables.
+
+4. **Configure backend state (recommended)** – Persisting Terraform state in Azure Storage enables collaboration and reliable recovery.
    ```bash
-   export ARM_SUBSCRIPTION_ID=<subscription-id>
-   # or in a .tfvars file
-   subscription_id = "<subscription-id>"
+   RESOURCE_GROUP="rg-tfstate-$(date +%y%m%d)"
+   STORAGE_ACCOUNT="sttfstate$(date +%y%m%d%H%M)"
+   CONTAINER_NAME="tfstate"
+
+   az group create --name "$RESOURCE_GROUP" --location eastus
+   az storage account create --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --sku Standard_LRS --encryption-services blob
+   az storage container create --name "$CONTAINER_NAME" --account-name "$STORAGE_ACCOUNT"
    ```
-3. **Configure backend (optional)** – If using remote state, create the storage account/container and update a `backend` block in `terraform {}` or supply `-backend-config` values during `terraform init`.
-4. **Review the default variables** – The repository ships with `landingzone.defaults.auto.tfvars`, which pre-populates a CAF-aligned test deployment (West Europe, `aiops` project code, `tst` environment, and the sample VNet). Update this file or provide your own `.tfvars` to target a different environment.
-5. **Initialize Terraform**
+   Save the generated resource names and either edit the `backend` block in `terraform.tf` or provide `-backend-config` flags during `terraform init`, for example:
+   ```bash
+   terraform init \
+     -backend-config="resource_group_name=$RESOURCE_GROUP" \
+     -backend-config="storage_account_name=$STORAGE_ACCOUNT" \
+     -backend-config="container_name=$CONTAINER_NAME" \
+     -backend-config="key=landingzone.tfstate"
+   ```
+   When experimenting locally you can skip this step and allow Terraform to use the default local state file (`terraform.tfstate`).
+
+5. **Customize variables** – Start from `landingzone.defaults.auto.tfvars` and tailor it (or create additional `.tfvars` files) per environment:
+   ```hcl
+   # landingzone.dev.auto.tfvars
+   location         = "eastus"
+   project_code     = "aihub"
+   environment_code = "dev"
+
+   networking_definition = {
+     address_space = ["10.20.0.0/16"]
+   }
+
+   buildvm_definition = {
+     deploy = false
+   }
+   ```
+   - Use separate files such as `landingzone.prod.auto.tfvars` to encode production-ready SKUs and diagnostics.
+   - The variable files are merged with `landingzone.subscription.auto.tfvars` so subscription context stays isolated from Git history.
+
+6. **Install providers and modules**
    ```bash
    terraform init
    ```
-   This downloads the required providers (`azurerm`, `azapi`, `azurecaf`, `modtm`, `random`, `time`) and AVM modules referenced in the configuration.
-6. **Review the configuration**
+   The command downloads the `azurerm`, `azapi`, `azurecaf`, `modtm`, `random`, and `time` providers together with all referenced Azure Verified Modules.
+
+7. **Validate formatting, schema, and plan**
    ```bash
    terraform fmt -recursive
    terraform validate
-   terraform plan -out landingzone.plan
+   terraform plan -var-file=landingzone.dev.auto.tfvars -out=landingzone.plan
    ```
-   Use the plan output to confirm which optional components (firewall, Bastion, Cosmos DB, etc.) will deploy based on your variable selections.
-7. **Apply the landing zone**
+   - Use multiple `-var-file` flags to layer environment-specific settings (`-var-file=landingzone.defaults.auto.tfvars -var-file=landingzone.dev.auto.tfvars`).
+   - Review the plan output carefully to confirm which optional services (Azure Firewall, Bastion, Cosmos DB, Azure AI Foundry, API Management, etc.) are being provisioned.
+
+8. **Apply the plan**
    ```bash
    terraform apply landingzone.plan
    ```
-   Terraform will create the resource group, networking fabric, security controls, platform services, and optional AI workloads defined by your configuration.
-8. **Post-deployment tasks** – Record key outputs (update `outputs.tf` to emit IDs or endpoints you rely on), integrate the deployed resources with your platform governance tooling, and, if you enabled Azure AI Foundry or API Management, onboard application teams to the new services.
+   Terraform will create the resource group, networking fabric, security controls, platform services, and optional AI workloads defined by your configuration. If you do not need to persist the plan file, run `terraform apply` without `-out` and respond to the confirmation prompt directly.
 
-To destroy the environment later, run `terraform destroy` using the same variable set.
+9. **Post-deployment validation**
+   - Review `terraform output` (after populating `outputs.tf` with the identifiers you care about) and share the necessary connection details with application teams.
+   - Confirm private endpoints are approved, DNS zones are linked, and Azure Monitor diagnostic settings stream to the expected Log Analytics workspace.
+   - Integrate the deployed resources with your platform governance tooling (policy assignments, budgets, access packages, etc.).
+
+10. **Iterate and destroy**
+    - Rerun `terraform plan` whenever you modify `.tfvars` files or upgrade module versions to preview the impact.
+    - To tear down a non-production environment, run `terraform destroy -var-file=...` using the same combination of variable files you used for deployment.
+
+For CI/CD pipelines, replicate steps 3–8 in your automation platform (GitHub Actions, Azure DevOps, etc.), using secure secret storage for sensitive inputs and leveraging `terraform init -backend-config=...` with remote state credentials.
 
 ## Contributing
 Contributions are welcome. Please review `CONTRIBUTING.md`, run the AVM validation pipeline (`./avm pre-commit` and `./avm pr-check`), and ensure documentation and examples stay aligned with any code changes.
