@@ -218,19 +218,8 @@ data "azurecaf_name" "this" {
 
 locals {
   azurecaf_result = local.use_azurecaf && length(data.azurecaf_name.this) > 0 ? data.azurecaf_name.this[0].result : null
-  azurecaf_parts  = local.azurecaf_result != null ? split("-", local.azurecaf_result) : []
-  azurecaf_without_prefix = local.azurecaf_result != null ? (
-    length(local.azurecaf_parts) > 1 ?
-    join("-", slice(local.azurecaf_parts, 1, length(local.azurecaf_parts))) :
-    (
-      startswith(local.azurecaf_result, local.rshort) && length(local.azurecaf_result) > length(local.rshort) ?
-      substr(local.azurecaf_result, length(local.rshort), length(local.azurecaf_result) - length(local.rshort)) :
-      local.azurecaf_result
-    )
-  ) : null
-  azurecaf_cleaned = local.azurecaf_without_prefix != null && local.azurecaf_without_prefix != "" ? local.azurecaf_without_prefix : local.azurecaf_result
 }
 
 output "name" {
-  value = coalesce(local.azurecaf_cleaned, substr(local.fallback_base, 0, local.fallback_length))
+  value = coalesce(local.azurecaf_result, substr(local.fallback_base, 0, local.fallback_length))
 }
