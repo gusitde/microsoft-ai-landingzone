@@ -301,7 +301,7 @@ variable "app_gateway_definition" {
         frontend_port_name   = "port-443"
         protocol             = "Https"
         ssl_certificate_name = "tls-cert"
-        require_sni          = true
+        require_sni          = false
       }
     }
 
