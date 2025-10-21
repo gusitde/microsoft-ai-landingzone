@@ -123,6 +123,7 @@ variable "app_gateway_definition" {
       frontend_port_name             = string
       frontend_ip_configuration_name = optional(string)
       firewall_policy_id             = optional(string)
+      protocol                       = optional(string)
       require_sni                    = optional(bool)
       host_name                      = optional(string)
       host_names                     = optional(list(string))
@@ -289,15 +290,25 @@ variable "app_gateway_definition" {
 
     frontend_ports = {
       https = {
-        name = "frontend-https"
+        name = "port-443"
         port = 443
       }
     }
 
     http_listeners = {
       https = {
-        name               = "https-listener"
-        frontend_port_name = "frontend-https"
+        name                 = "https-listener"
+        frontend_port_name   = "port-443"
+        protocol             = "Https"
+        ssl_certificate_name = "tls-cert"
+        require_sni          = true
+      }
+    }
+
+    ssl_certificates = {
+      default = {
+        name                = "tls-cert"
+        key_vault_secret_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-aiops-tst-weu-001/providers/Microsoft.KeyVault/vaults/kv-aiops-tst-weu-001/secrets/appgw-cert"
       }
     }
 
