@@ -201,6 +201,14 @@ variable "app_gateway_definition" {
       })))
     })), null)
 
+    key_vault_integration = optional(object({
+      name                = optional(string)
+      resource_group_name = optional(string)
+      resource_id         = optional(string)
+      secret_id           = optional(string)
+      secret_name         = optional(string)
+    }), null)
+
     ssl_certificates = optional(map(object({
       name                = string
       data                = optional(string)
@@ -273,6 +281,12 @@ variable "app_gateway_definition" {
   default = {
     deploy = true
 
+    key_vault_integration = {
+      name                = "kv-aiops-tst-weu-001"
+      resource_group_name = "azr-tapai-tst-weu-rg-001"
+      secret_name         = "appgw-cert"
+    }
+
     backend_address_pools = {
       default = {
         name         = "be-default"
@@ -330,6 +344,12 @@ variable "app_gateway_definition" {
 Configuration object for the Azure Application Gateway to be deployed.
 
 - `deploy` - (Optional) Deploy the application gateway. Default is true.
+- `key_vault_integration` - (Optional) Configuration for integrating the Application Gateway with an existing Key Vault.
+  - `name` - (Optional) Name of the Key Vault hosting TLS certificates.
+  - `resource_group_name` - (Optional) Resource group containing the Key Vault.
+  - `resource_id` - (Optional) Resource ID of the Key Vault. Overrides `name` and `resource_group_name` when provided.
+  - `secret_id` - (Optional) Explicit secret URI to use for TLS certificates. Overrides constructed URIs when provided.
+  - `secret_name` - (Optional) Default secret name used when building secret URIs for TLS certificates.
 - `name` - (Optional) The name of the Application Gateway. If not provided, a name will be generated.
 - `http2_enable` - (Optional) Whether HTTP/2 is enabled. Default is true.
 - `authentication_certificate` - (Optional) Map of authentication certificates for backend authentication.

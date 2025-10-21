@@ -9,47 +9,108 @@ locals {
   )
   application_gateway_role_assignments_base = {}
   deploy_app_gateway = try(var.app_gateway_definition.deploy, true)
+  app_gateway_key_vault_integration = try(var.app_gateway_definition.key_vault_integration, null)
+  app_gateway_key_vault_name = try(local.app_gateway_key_vault_integration.name, null)
+  app_gateway_key_vault_resource_group_name = try(local.app_gateway_key_vault_integration.resource_group_name, null)
+  app_gateway_key_vault_resource_id_override = try(local.app_gateway_key_vault_integration.resource_id, null)
+  app_gateway_key_vault_secret_name = try(local.app_gateway_key_vault_integration.secret_name, null)
+  app_gateway_key_vault_secret_id_override = try(local.app_gateway_key_vault_integration.secret_id, null)
+  app_gateway_key_vault_secret_base_uri = local.app_gateway_key_vault_name != null ? format("https://%s.vault.azure.net/secrets", local.app_gateway_key_vault_name) : null
+  app_gateway_key_vault_secret_id = coalesce(
+    (
+      local.app_gateway_key_vault_secret_id_override != null ?
+      (
+        length(regexall("^https://", trimspace(local.app_gateway_key_vault_secret_id_override))) > 0 ?
+        (
+          length(regexall("/secrets/[^/]+/[^/]+$", trimspace(local.app_gateway_key_vault_secret_id_override))) > 0 ?
+          regex_replace(trimspace(local.app_gateway_key_vault_secret_id_override), "/[^/]+$", "") :
+          trimspace(local.app_gateway_key_vault_secret_id_override)
+        ) :
+        trimspace(local.app_gateway_key_vault_secret_id_override)
+      ) :
+      null
+    ),
+    (
+      local.app_gateway_key_vault_secret_base_uri != null && local.app_gateway_key_vault_secret_name != null ?
+      format("%s/%s", local.app_gateway_key_vault_secret_base_uri, trimspace(local.app_gateway_key_vault_secret_name)) :
+      null
+    )
+  )
+  app_gateway_key_vault_resource_id = coalesce(
+    local.app_gateway_key_vault_resource_id_override,
+    (
+      local.app_gateway_key_vault_name != null && local.app_gateway_key_vault_resource_group_name != null ?
+      format(
+        "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.KeyVault/vaults/%s",
+        data.azurerm_client_config.current.subscription_id,
+        local.app_gateway_key_vault_resource_group_name,
+        local.app_gateway_key_vault_name
+      ) :
+      null
+    )
+  )
   app_gateway_frontend_ports = coalesce(try(var.app_gateway_definition.frontend_ports, null), {})
   app_gateway_https_frontend_port_names = [
     for frontend in values(local.app_gateway_frontend_ports) :
     frontend.name if try(frontend.port, null) == 443
   ]
-  app_gateway_ssl_certificates = length(coalesce(try(var.app_gateway_definition.ssl_certificates, null), {})) > 0 ? {
-    for cert_key, cert_value in coalesce(try(var.app_gateway_definition.ssl_certificates, null), {}) :
+  app_gateway_ssl_certificates_input = coalesce(try(var.app_gateway_definition.ssl_certificates, null), {})
+  app_gateway_sanitized_secret_ids = {
+    for cert_key, cert_value in local.app_gateway_ssl_certificates_input :
+    cert_key => (
+      try(cert_value.key_vault_secret_id, null) != null && length(trimspace(cert_value.key_vault_secret_id)) > 0 ?
+      (
+        length(regexall("^https://", trimspace(cert_value.key_vault_secret_id))) > 0 ?
+        (
+          length(regexall("/secrets/[^/]+/[^/]+$", trimspace(cert_value.key_vault_secret_id))) > 0 ?
+          regex_replace(trimspace(cert_value.key_vault_secret_id), "/[^/]+$", "") :
+          trimspace(cert_value.key_vault_secret_id)
+        ) :
+        (
+          local.app_gateway_key_vault_secret_base_uri != null ?
+          format("%s/%s", local.app_gateway_key_vault_secret_base_uri, trimspace(cert_value.key_vault_secret_id)) :
+          null
+        )
+      ) :
+      local.app_gateway_key_vault_secret_id
+    )
+  }
+  app_gateway_ssl_certificates = length(local.app_gateway_ssl_certificates_input) > 0 ? {
+    for cert_key, cert_value in local.app_gateway_ssl_certificates_input :
     cert_key => merge(
       cert_value,
-      (
-        try(cert_value.name, "") == "tls-cert" || try(cert_value.key_vault_secret_id, null) == "kv-aiops-tst-weu-001/appgw-cert"
-      ) ? {
-        key_vault_secret_id = local.appgw_cert_versionless_secret_id
-      } : (
-        (try(cert_value.key_vault_secret_id, null) != null && !startswith(lower(cert_value.key_vault_secret_id), "https://")) ? {
-          key_vault_secret_id = local.appgw_cert_versionless_secret_id
-        } : {}
-      )
+      local.app_gateway_sanitized_secret_ids[cert_key] != null ? {
+        key_vault_secret_id = local.app_gateway_sanitized_secret_ids[cert_key]
+      } : {}
     )
-  } : {
-    tls = {
-      name                = "tls-cert"
-      key_vault_secret_id = local.appgw_cert_versionless_secret_id
-    }
-  }
+  } : (
+    local.app_gateway_key_vault_secret_id != null ? {
+      tls = {
+        name                = "tls-cert"
+        key_vault_secret_id = local.app_gateway_key_vault_secret_id
+      }
+    } : {}
+  )
   app_gateway_primary_ssl_certificate_name = try(
     one([
       for cert in values(local.app_gateway_ssl_certificates) : cert.name
       if lower(cert.name) == "tls-cert"
     ]),
-    try(values(local.app_gateway_ssl_certificates)[0].name, "tls-cert")
+    try(values(local.app_gateway_ssl_certificates)[0].name, null)
   )
   app_gateway_http_listeners = {
     for listener_key, listener_value in coalesce(try(var.app_gateway_definition.http_listeners, null), {}) :
     listener_key => merge(
       listener_value,
-      contains(local.app_gateway_https_frontend_port_names, try(listener_value.frontend_port_name, "")) || lower(try(listener_value.protocol, "")) == "https" ? {
-        protocol             = "Https"
-        ssl_certificate_name = local.app_gateway_primary_ssl_certificate_name
-        require_sni          = true
-      } : {}
+      contains(local.app_gateway_https_frontend_port_names, try(listener_value.frontend_port_name, "")) || lower(try(listener_value.protocol, "")) == "https" ? merge(
+        {
+          protocol    = "Https"
+          require_sni = true
+        },
+        local.app_gateway_primary_ssl_certificate_name != null ? {
+          ssl_certificate_name = local.app_gateway_primary_ssl_certificate_name
+        } : {}
+      ) : {}
     )
   }
   bastion_name = coalesce(
