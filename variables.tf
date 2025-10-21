@@ -139,6 +139,16 @@ If set to true, the module will deploy resources and connect to a platform landi
 DESCRIPTION
 }
 
+variable "vm_size" {
+  type        = string
+  default     = "Standard_B2ms"
+  description = <<DESCRIPTION
+Azure virtual machine size used for workloads deployed by this landing zone.
+
+The default `Standard_B2ms` SKU is broadly available in West Europe. Alternative balanced options you can consider include `Standard_D2ads_v5` and `Standard_D2as_v5` if capacity constraints require a change.
+DESCRIPTION
+}
+
 variable "tags" {
   type        = map(string)
   default     = null

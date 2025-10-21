@@ -39,7 +39,7 @@ module "buildvm" {
       description                = "Assign the owner role to the build machine's system assigned identity on the resource group."
     }
   }
-  sku_size = var.buildvm_definition.sku
+  sku_size = coalesce(var.buildvm_definition.sku, var.vm_size)
   source_image_reference = { #TODO: Determine if we want to provide flexibility for the VM sku type being created
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-focal"

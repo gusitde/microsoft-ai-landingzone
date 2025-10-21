@@ -31,7 +31,7 @@ module "jumpvm" {
     }
   }
   enable_telemetry = local.core_enable_telemetry
-  sku_size         = var.jumpvm_definition.sku
+  sku_size         = coalesce(var.jumpvm_definition.sku, var.vm_size)
   tags             = var.jumpvm_definition.tags
 
   depends_on = [module.avm_res_keyvault_vault, azurerm_role_assignment.deployment_user_kv_admin]
