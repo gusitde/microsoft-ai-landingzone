@@ -102,6 +102,7 @@ locals {
     bastion_host                                   = "bast"
     bing_grounding_account                         = "bing"
     cognitive_account                              = "cog"
+    cosmosdb_account                               = "cosmos"
     container_app_environment                      = "cae"
     container_registry                             = "acr"
     firewall_policy                                = "fwpol"
@@ -141,6 +142,7 @@ locals {
     cognitive_account                     = "azurerm_cognitive_account"
     container_app_environment             = "azurerm_container_app_environment"
     container_registry                    = "azurerm_container_registry"
+    cosmosdb_account                      = "azurerm_cosmosdb_account"
     firewall_policy                       = "azurerm_firewall_policy"
     firewall_policy_rule_collection_group = "general"
     web_application_firewall_policy       = "azurerm_web_application_firewall_policy"
@@ -172,6 +174,7 @@ locals {
     "app_configuration",
     "cognitive_account",
     "container_registry",
+    "cosmosdb_account",
     "search_service",
     "storage_account"
   ])

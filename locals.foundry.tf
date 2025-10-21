@@ -3,6 +3,9 @@ locals {
     try(var.ai_foundry_definition.name, null),
     module.naming_ai_foundry_account.name
   )
+  ai_foundry_base_source = replace(local.ai_foundry_name, "-", "")
+  ai_foundry_base_length = max(min(length(local.ai_foundry_base_source), 7), 3)
+  ai_foundry_base_name   = substr(local.ai_foundry_base_source, 0, local.ai_foundry_base_length)
   foundry_ai_foundry = merge(
     var.ai_foundry_definition.ai_foundry, {
       name = local.ai_foundry_name
