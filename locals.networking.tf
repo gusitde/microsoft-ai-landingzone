@@ -9,7 +9,22 @@ locals {
   )
   application_gateway_role_assignments_base = {}
   deploy_app_gateway = try(var.app_gateway_definition.deploy, true)
-  app_gateway_key_vault_integration = try(var.app_gateway_definition.key_vault_integration, null)
+  app_gateway_key_vault_default_secret_name = "appgw-cert"
+  app_gateway_key_vault_default_resource_id = try(module.avm_res_keyvault_vault.resource_id, null)
+  app_gateway_key_vault_default_resource_id_parts = local.app_gateway_key_vault_default_resource_id != null ? split("/", local.app_gateway_key_vault_default_resource_id) : []
+  app_gateway_key_vault_default_resource_group_name = length(local.app_gateway_key_vault_default_resource_id_parts) > 4 ? local.app_gateway_key_vault_default_resource_id_parts[4] : null
+  app_gateway_key_vault_default_name = length(local.app_gateway_key_vault_default_resource_id_parts) > 8 ? local.app_gateway_key_vault_default_resource_id_parts[8] : null
+  app_gateway_key_vault_integration_input = var.app_gateway_definition.key_vault_integration != null ? var.app_gateway_definition.key_vault_integration : {}
+  app_gateway_key_vault_integration = merge(
+    {
+      name                = local.app_gateway_key_vault_default_name,
+      resource_group_name = local.app_gateway_key_vault_default_resource_group_name,
+      resource_id         = null,
+      secret_id           = null,
+      secret_name         = local.app_gateway_key_vault_default_secret_name,
+    },
+    local.app_gateway_key_vault_integration_input
+  )
   app_gateway_key_vault_name = try(local.app_gateway_key_vault_integration.name, null)
   app_gateway_key_vault_resource_group_name = try(local.app_gateway_key_vault_integration.resource_group_name, null)
   app_gateway_key_vault_resource_id_override = try(local.app_gateway_key_vault_integration.resource_id, null)
@@ -47,7 +62,8 @@ locals {
         local.app_gateway_key_vault_name
       ) :
       null
-    )
+    ),
+    local.app_gateway_key_vault_default_resource_id
   )
   app_gateway_frontend_ports = coalesce(try(var.app_gateway_definition.frontend_ports, null), {})
   app_gateway_https_frontend_port_names = [
