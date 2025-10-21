@@ -77,7 +77,7 @@ The repository includes defaults so that `terraform plan` and `terraform apply` 
 | `environment_code` | `tst` | Drives environment-specific naming and tagging. |
 | `resource_group_name` | `rg-aiops-tst-weu-001` | Matches the default naming convention for the sample environment. |
 | `waf_policy_definition.managed_rules` | OWASP 3.2 | The WAF policy ships with an OWASP 3.2 managed rule set in Prevention mode. |
-| `app_gateway_definition` | WAF_v2 HTTPS listener with placeholder backend `10.0.1.4` | Provides a fully populated Application Gateway configuration so Terraform does not prompt for required fields. Update the backend IPs/FQDNs to match your workloads. |
+| `app_gateway_definition` | WAF_v2 HTTPS listener with placeholder backend `10.0.1.4` | Provides a fully populated Application Gateway configuration so Terraform does not prompt for required fields. Update the backend IPs/FQDNs or names to match your workloads. |
 
 These defaults are safe starting points for evaluation. Adjust them (or override them in your own `.tfvars` file) before deploying to production so that the Application Gateway routes traffic to the correct services and aligns with your organisation's standards.
 
