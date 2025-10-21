@@ -51,10 +51,30 @@ locals {
       null
     )
   )
+  app_gateway_key_vault_secret_id_host = (
+    local.app_gateway_key_vault_secret_id != null &&
+    length(regexall("^https://", lower(trimspace(local.app_gateway_key_vault_secret_id)))) > 0 ?
+    lower(regex("^https://([^/]+)/", trimspace(local.app_gateway_key_vault_secret_id))) :
+    null
+  )
+  app_gateway_key_vault_expected_secret_host = (
+    local.app_gateway_key_vault_name != null &&
+    length(trimspace(local.app_gateway_key_vault_name)) > 0 ?
+    lower(format("%s.vault.azure.net", trimspace(local.app_gateway_key_vault_name))) :
+    null
+  )
+  app_gateway_key_vault_secret_id_points_to_expected_vault = (
+    local.app_gateway_key_vault_secret_id_override == null ||
+    local.app_gateway_key_vault_secret_id_host == null ||
+    local.app_gateway_key_vault_expected_secret_host == null ||
+    local.app_gateway_key_vault_secret_id_host == local.app_gateway_key_vault_expected_secret_host
+  )
   app_gateway_key_vault_resource_id = coalesce(
     local.app_gateway_key_vault_resource_id_override,
     (
-      local.app_gateway_key_vault_name != null && local.app_gateway_key_vault_resource_group_name != null ?
+      local.app_gateway_key_vault_name != null &&
+      local.app_gateway_key_vault_resource_group_name != null &&
+      local.app_gateway_key_vault_secret_id_points_to_expected_vault ?
       format(
         "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.KeyVault/vaults/%s",
         data.azurerm_client_config.current.subscription_id,
@@ -63,7 +83,7 @@ locals {
       ) :
       null
     ),
-    local.app_gateway_key_vault_default_resource_id
+    local.app_gateway_key_vault_secret_id_points_to_expected_vault ? local.app_gateway_key_vault_default_resource_id : null
   )
   app_gateway_frontend_ports = coalesce(try(var.app_gateway_definition.frontend_ports, null), {})
   app_gateway_https_frontend_port_names = [
