@@ -18,7 +18,7 @@ module "avm_res_keyvault_vault" {
   network_acls                    = var.genai_key_vault_definition.network_acls
   private_endpoints = {
     primary = {
-      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.key_vault_zone.resource_id] : [local.private_dns_zones_existing.key_vault_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [azurerm_private_dns_zone.kv[0].id] : [local.private_dns_zones_existing.key_vault_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }

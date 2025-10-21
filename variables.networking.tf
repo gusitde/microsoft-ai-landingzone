@@ -308,7 +308,7 @@ variable "app_gateway_definition" {
     ssl_certificates = {
       default = {
         name                = "tls-cert"
-        key_vault_secret_id = "kv-aiops-tst-weu-001/appgw-cert"
+        key_vault_secret_id = "https://kv-aiops-tst-weu-001.vault.azure.net/secrets/appgw-cert"
       }
     }
 
@@ -410,7 +410,7 @@ Configuration object for the Azure Application Gateway to be deployed.
   - `name` - The name of the SSL certificate.
   - `data` - (Optional) Base64 encoded certificate data.
   - `password` - (Optional) Password for the certificate.
-  - `key_vault_secret_id` - (Optional) Key Vault secret reference in `<key_vault_name>/<secret_name>[/<secret_version>]` format containing the certificate.
+  - `key_vault_secret_id` - (Optional) Key Vault secret URI (versionless) referencing the certificate in Azure Key Vault.
 - `ssl_policy` - (Optional) SSL policy configuration.
   - `cipher_suites` - (Optional) List of cipher suites to enable.
   - `disabled_protocols` - (Optional) List of protocols to disable.
@@ -428,7 +428,7 @@ Configuration object for the Azure Application Gateway to be deployed.
   - `name` - The name of the certificate.
 - `trusted_root_certificate` - (Optional) Map of trusted root certificates. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
   - `data` - (Optional) Base64 encoded certificate data.
-  - `key_vault_secret_id` - (Optional) Key Vault secret reference in `<key_vault_name>/<secret_name>[/<secret_version>]` format containing the certificate.
+  - `key_vault_secret_id` - (Optional) Key Vault secret URI (versionless) referencing the certificate in Azure Key Vault.
   - `name` - The name of the certificate.
 - `url_path_map_configurations` - (Optional) Map of URL path map configurations. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
   - `name` - The name of the URL path map.
