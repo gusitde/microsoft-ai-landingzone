@@ -1,10 +1,13 @@
 module "naming_genai_key_vault" {
-  source      = "./modules/naming"
-  project     = local.core_project_code
-  environment = local.core_environment_code
-  location    = local.core_location
-  resource    = "key_vault"
-  descriptor  = "genai"
+  source            = "./modules/naming"
+  project           = local.core_project_code  # Keep same as other resources for alignment
+  environment       = local.core_environment_code
+  location          = local.core_location
+  resource          = "key_vault"
+  descriptor        = ""  # Remove genai to fit Azure's 24-char limit
+  unique            = true
+  unique_length     = 3
+  enable_azurecaf   = false  # Disable azurecaf to use fallback naming with random suffix
 }
 
 module "naming_genai_cosmos_account" {

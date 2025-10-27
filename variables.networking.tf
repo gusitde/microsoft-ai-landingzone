@@ -461,7 +461,7 @@ DESCRIPTION
 
 variable "bastion_definition" {
   type = object({
-    deploy = optional(bool, true)
+    deploy = optional(bool, false)
     name   = optional(string)
     sku    = optional(string, "Standard")
     tags   = optional(map(string), {})
@@ -471,7 +471,7 @@ variable "bastion_definition" {
   description = <<DESCRIPTION
 Configuration object for the Azure Bastion service to be deployed.
 
-- `deploy` - (Optional) Deploy the bastion service? Default is true.
+- `deploy` - (Optional) Deploy the bastion service? Default is false.
 - `name` - (Optional) The name of the Bastion service. If not provided, a name will be generated.
 - `sku` - (Optional) The SKU of the Bastion service. Default is "Standard".
 - `tags` - (Optional) Map of tags to assign to the Bastion service.
@@ -481,7 +481,7 @@ DESCRIPTION
 
 variable "firewall_definition" {
   type = object({
-    deploy = optional(bool, true)
+    deploy = optional(bool, false)
     name   = optional(string)
     sku    = optional(string, "AZFW_VNet")
     tier   = optional(string, "Standard")
@@ -492,7 +492,7 @@ variable "firewall_definition" {
   description = <<DESCRIPTION
 Configuration object for the Azure Firewall to be deployed.
 
-- `deploy` - (Optional) Deploy the Azure Firewall? Default is true.
+- `deploy` - (Optional) Deploy the Azure Firewall? Default is false.
 - `name` - (Optional) The name of the Azure Firewall. If not provided, a name will be generated.
 - `sku` - (Optional) The SKU of the Azure Firewall. Default is "AZFW_VNet".
 - `tier` - (Optional) The tier of the Azure Firewall. Default is "Standard".

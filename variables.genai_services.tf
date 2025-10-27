@@ -128,7 +128,7 @@ variable "genai_cosmosdb_definition" {
       name = string
     })), [])
     capacity = optional(object({
-      total_throughput_limit = optional(number, -1)
+      total_throughput_limit = optional(number, 1000)
     }), {})
     cors_rule = optional(object({
       allowed_headers    = set(string)
@@ -168,8 +168,8 @@ Configuration object for the Azure Cosmos DB account to be created for GenAI ser
   - `tier` - (Optional) The backup tier.
 - `capabilities` - (Optional) Set of capabilities to enable on the Cosmos DB account.
   - `name` - The name of the capability.
-- `capacity` - (Optional) Capacity configuration.
-  - `total_throughput_limit` - (Optional) Total throughput limit. Default is -1 (unlimited).
+- `capacity` - (Optional) Capacity configuration for provisioned throughput.
+  - `total_throughput_limit` - (Optional) Total throughput limit for autoscale. Default is 1000 RU/s.
 - `cors_rule` - (Optional) CORS rule configuration.
   - `allowed_headers` - Set of allowed headers.
   - `allowed_methods` - Set of allowed HTTP methods.
@@ -231,16 +231,17 @@ DESCRIPTION
 
 variable "genai_storage_account_definition" {
   type = object({
-    deploy                        = optional(bool, true)
-    name                          = optional(string)
-    enable_diagnostic_settings    = optional(bool, true)
-    account_kind                  = optional(string, "StorageV2")
-    account_tier                  = optional(string, "Standard")
-    account_replication_type      = optional(string, "GRS")
-    endpoint_types                = optional(set(string), ["blob"])
-    access_tier                   = optional(string, "Hot")
-    public_network_access_enabled = optional(bool, false)
-    shared_access_key_enabled     = optional(bool, true)
+    deploy                          = optional(bool, true)
+    name                            = optional(string)
+    enable_diagnostic_settings      = optional(bool, true)
+    account_kind                    = optional(string, "StorageV2")
+    account_tier                    = optional(string, "Standard")
+    account_replication_type        = optional(string, "GRS")
+    endpoint_types                  = optional(set(string), ["blob"])
+    access_tier                     = optional(string, "Hot")
+    public_network_access_enabled   = optional(bool, false)
+    shared_access_key_enabled       = optional(bool, true)
+    default_to_oauth_authentication = optional(bool, true)
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
       principal_id                           = string
@@ -268,7 +269,8 @@ Configuration object for the Azure Storage Account to be created for GenAI servi
 - `endpoint_types` - (Optional) Set of endpoint types to enable. Default is ["blob"].
 - `access_tier` - (Optional) The access tier for the storage account. Default is "Hot".
 - `public_network_access_enabled` - (Optional) Whether public network access is enabled. Default is false.
-- `shared_access_key_enabled` - (Optional) Whether shared access keys are enabled. Default is true.
+- `shared_access_key_enabled` - (Optional) Whether shared access keys are enabled. Default is false.
+- `default_to_oauth_authentication` - (Optional) Whether to default to OAuth authentication. Default is true.
 - `role_assignments` - (Optional) Map of role assignments to create on the Storage Account. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
   - `role_definition_id_or_name` - The role definition ID or name to assign.
   - `principal_id` - The principal ID to assign the role to.

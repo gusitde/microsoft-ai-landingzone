@@ -82,14 +82,14 @@ module "firewall_route_table" {
   name                          = local.route_table_name
   resource_group_name           = azurerm_resource_group.this.name
   bgp_route_propagation_enabled = true
-  routes = {
+  routes = var.firewall_definition.deploy ? {
     azure_firewall = {
       name                   = "default-to-firewall"
       address_prefix         = "0.0.0.0/0"
       next_hop_type          = "VirtualAppliance"
       next_hop_in_ip_address = module.firewall[0].resource.ip_configuration[0].private_ip_address
     }
-  }
+  } : {}
 }
 
 module "fw_pip" {
@@ -227,16 +227,15 @@ module "application_gateway" {
       metric_categories     = ["AllMetrics"]
     }
   }
-  enable_telemetry            = local.core_enable_telemetry
-  http2_enable                = var.app_gateway_definition.http2_enable
-  probe_configurations        = var.app_gateway_definition.probe_configurations
-  public_ip_name              = module.naming_application_gateway_public_ip.name
-  redirect_configuration      = var.app_gateway_definition.redirect_configuration
-  rewrite_rule_set            = var.app_gateway_definition.rewrite_rule_set
-  role_assignments            = local.application_gateway_role_assignments
-  identity = local.deploy_app_gateway ? {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.appgw_uami[0].id]
+  enable_telemetry       = local.core_enable_telemetry
+  http2_enable           = var.app_gateway_definition.http2_enable
+  probe_configurations   = var.app_gateway_definition.probe_configurations
+  public_ip_name         = module.naming_application_gateway_public_ip.name
+  redirect_configuration = var.app_gateway_definition.redirect_configuration
+  rewrite_rule_set       = var.app_gateway_definition.rewrite_rule_set
+  role_assignments       = local.application_gateway_role_assignments
+  managed_identities = local.deploy_app_gateway ? {
+    user_assigned_resource_ids = [azurerm_user_assigned_identity.appgw_uami[0].id]
   } : null
   sku                         = var.app_gateway_definition.sku
   ssl_certificates            = local.app_gateway_ssl_certificates

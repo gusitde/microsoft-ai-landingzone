@@ -125,3 +125,12 @@ module "naming_virtual_hub_connection" {
   resource    = "virtual_hub_connection"
   descriptor  = "peer"
 }
+
+module "naming_appgw_user_assigned_identity" {
+  source      = "./modules/naming"
+  project     = local.core_project_code
+  environment = local.core_environment_code
+  location    = local.core_location
+  resource    = "user_assigned_identity"
+  descriptor  = "appgw"
+}

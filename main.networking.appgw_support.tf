@@ -3,7 +3,7 @@
 resource "azurerm_user_assigned_identity" "appgw_uami" {
   count = local.deploy_app_gateway ? 1 : 0
 
-  name                = "uami-azr-tapai-tst-weu-appgw"
+  name                = module.naming_appgw_user_assigned_identity.name
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
 }
@@ -26,7 +26,7 @@ resource "azurerm_private_dns_zone" "kv" {
 resource "azurerm_private_dns_zone_virtual_network_link" "kv_link" {
   count = local.core_flag_platform_landing_zone ? 1 : 0
 
-  name                  = "pdzlnk-kv-weu"
+  name                  = "pdzlnk-kv-${local.region_code}"
   resource_group_name   = azurerm_resource_group.this.name
   private_dns_zone_name = azurerm_private_dns_zone.kv[count.index].name
   virtual_network_id    = module.ai_lz_vnet.resource_id
@@ -35,13 +35,13 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_link" {
 resource "azurerm_private_endpoint" "kv" {
   count = local.core_flag_platform_landing_zone && local.app_gateway_key_vault_resource_id != null ? 1 : 0
 
-  name                = "pe-kv-aiops-tst-weu-001"
+  name                = "pe-kv-aiops-tst-${local.region_code}-001"
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   subnet_id           = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
 
   private_service_connection {
-    name                           = "psc-kv-aiops-tst-weu-001"
+    name                           = "psc-kv-aiops-tst-${local.region_code}-001"
     private_connection_resource_id = local.app_gateway_key_vault_resource_id
     is_manual_connection           = false
     subresource_names              = ["vault"]

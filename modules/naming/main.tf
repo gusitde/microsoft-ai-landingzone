@@ -11,6 +11,11 @@ terraform {
       source  = "aztfmod/azurecaf"
       version = "~> 1.2"
     }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -76,7 +81,7 @@ variable "unique_length" {
 
 variable "enable_azurecaf" {
   type        = bool
-  default     = true
+  default     = false  # Disable azurecaf by default to use proper organizational naming convention
   description = "Set to false to skip the azurecaf provider and rely on deterministic fallback naming."
 }
 
@@ -125,6 +130,7 @@ locals {
     service_plan                                   = "asp"
     storage_account                                = "st"
     subnet                                         = "snet"
+    user_assigned_identity                         = "uami"
     virtual_network_peering                        = "peer"
     virtual_hub_connection                         = "vhc"
     virtual_machine                                 = "vm"
@@ -163,6 +169,7 @@ locals {
     service_plan                          = "azurerm_service_plan"
     storage_account                       = "azurerm_storage_account"
     subnet                                = "azurerm_subnet"
+    user_assigned_identity                = "azurerm_user_assigned_identity"
     virtual_network_peering              = "azurerm_virtual_network_peering"
     virtual_hub_connection               = "azurerm_virtual_hub_connection"
     virtual_machine                      = "azurerm_virtual_machine"
@@ -171,12 +178,7 @@ locals {
   }
 
   needs_unique = toset([
-    "app_configuration",
-    "cognitive_account",
-    "container_registry",
-    "cosmosdb_account",
-    "search_service",
-    "storage_account"
+    "key_vault"  # Only Key Vault needs random suffix due to 90-day purge policy
   ])
 
   project = lower(var.project)
@@ -185,7 +187,7 @@ locals {
   rshort  = lookup(local.type_abbr, var.resource, var.resource)
 
   base_parts = compact([
-    "azr",
+    "azr",  # Always include "azr" prefix for organizational standards
     local.project,
     local.env,
     local.region,
@@ -194,7 +196,9 @@ locals {
   ])
 
   tail       = var.resource == "resource_group" ? [format("%02d", var.rg_version)] : [format("%02d", var.index)]
-  human_name = join("-", concat(local.base_parts, local.tail))
+  # Skip tail/index for Key Vault when unique is enabled to save characters for random suffix
+  use_tail   = var.resource == "key_vault" && var.unique == true ? false : true
+  human_name = local.use_tail ? join("-", concat(local.base_parts, local.tail)) : join("-", local.base_parts)
 
   unique_auto = var.unique == null ? contains(local.needs_unique, var.resource) : var.unique
 
@@ -204,6 +208,15 @@ locals {
   fallback_length = length(local.fallback_base) < 63 ? length(local.fallback_base) : 63
 
   use_azurecaf = var.enable_azurecaf
+}
+
+resource "random_string" "unique_suffix" {
+  count   = !local.use_azurecaf && local.unique_auto ? 1 : 0
+  length  = var.unique_length
+  lower   = true
+  upper   = false
+  numeric = true
+  special = false
 }
 
 data "azurecaf_name" "this" {
@@ -229,8 +242,25 @@ locals {
     )
   ) : null
   azurecaf_cleaned = local.azurecaf_without_prefix != null && local.azurecaf_without_prefix != "" ? local.azurecaf_without_prefix : local.azurecaf_result
+  
+  # Resources that require alphanumeric-only names (no dashes)
+  requires_alphanumeric_only = contains(["storage_account", "container_registry"], var.resource)
 }
 
 output "name" {
-  value = coalesce(local.azurecaf_cleaned, substr(local.fallback_base, 0, local.fallback_length))
+  value = local.azurecaf_result != null ? local.azurecaf_result : (
+    !local.use_azurecaf ? (
+      local.requires_alphanumeric_only ? (
+        # For storage accounts and container registries, use fallback logic without dashes
+        local.unique_auto && length(random_string.unique_suffix) > 0 ? 
+        substr("${local.fallback_base}${random_string.unique_suffix[0].result}", 0, local.fallback_length) :
+        substr(local.fallback_base, 0, local.fallback_length)
+      ) : (
+        # For other resources, use human-readable names with dashes
+        local.unique_auto && length(random_string.unique_suffix) > 0 ? 
+        "${local.human_name}-${random_string.unique_suffix[0].result}" : 
+        local.human_name
+      )
+    ) : substr(local.fallback_base, 0, local.fallback_length)
+  )
 }

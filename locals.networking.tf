@@ -7,14 +7,14 @@ locals {
     local.application_gateway_role_assignments_base,
     try(var.app_gateway_definition.role_assignments, {})
   )
-  application_gateway_role_assignments_base = {}
-  deploy_app_gateway = try(var.app_gateway_definition.deploy, true)
-  app_gateway_key_vault_default_secret_name = "appgw-cert"
-  app_gateway_key_vault_default_resource_id = try(module.avm_res_keyvault_vault.resource_id, null)
-  app_gateway_key_vault_default_resource_id_parts = local.app_gateway_key_vault_default_resource_id != null ? split("/", local.app_gateway_key_vault_default_resource_id) : []
+  application_gateway_role_assignments_base         = {}
+  deploy_app_gateway                                = try(var.app_gateway_definition.deploy, true)
+  app_gateway_key_vault_default_secret_name         = "appgw-cert"
+  app_gateway_key_vault_default_resource_id         = try(module.avm_res_keyvault_vault.resource_id, null)
+  app_gateway_key_vault_default_resource_id_parts   = local.app_gateway_key_vault_default_resource_id != null ? split("/", local.app_gateway_key_vault_default_resource_id) : []
   app_gateway_key_vault_default_resource_group_name = length(local.app_gateway_key_vault_default_resource_id_parts) > 4 ? local.app_gateway_key_vault_default_resource_id_parts[4] : null
-  app_gateway_key_vault_default_name = length(local.app_gateway_key_vault_default_resource_id_parts) > 8 ? local.app_gateway_key_vault_default_resource_id_parts[8] : null
-  app_gateway_key_vault_integration_input = var.app_gateway_definition.key_vault_integration != null ? var.app_gateway_definition.key_vault_integration : {}
+  app_gateway_key_vault_default_name                = length(local.app_gateway_key_vault_default_resource_id_parts) > 8 ? local.app_gateway_key_vault_default_resource_id_parts[8] : null
+  app_gateway_key_vault_integration_input           = var.app_gateway_definition.key_vault_integration != null ? var.app_gateway_definition.key_vault_integration : {}
   app_gateway_key_vault_integration = merge(
     {
       name                = local.app_gateway_key_vault_default_name,
@@ -25,12 +25,12 @@ locals {
     },
     local.app_gateway_key_vault_integration_input
   )
-  app_gateway_key_vault_name = try(local.app_gateway_key_vault_integration.name, null)
-  app_gateway_key_vault_resource_group_name = try(local.app_gateway_key_vault_integration.resource_group_name, null)
+  app_gateway_key_vault_name                 = try(local.app_gateway_key_vault_integration.name, null)
+  app_gateway_key_vault_resource_group_name  = try(local.app_gateway_key_vault_integration.resource_group_name, null)
   app_gateway_key_vault_resource_id_override = try(local.app_gateway_key_vault_integration.resource_id, null)
-  app_gateway_key_vault_secret_name = try(local.app_gateway_key_vault_integration.secret_name, null)
-  app_gateway_key_vault_secret_id_override = try(local.app_gateway_key_vault_integration.secret_id, null)
-  app_gateway_key_vault_secret_base_uri = local.app_gateway_key_vault_name != null ? format("https://%s.vault.azure.net/secrets", local.app_gateway_key_vault_name) : null
+  app_gateway_key_vault_secret_name          = try(local.app_gateway_key_vault_integration.secret_name, null)
+  app_gateway_key_vault_secret_id_override   = try(local.app_gateway_key_vault_integration.secret_id, null)
+  app_gateway_key_vault_secret_base_uri      = local.app_gateway_key_vault_name != null ? format("https://%s.vault.azure.net/secrets", local.app_gateway_key_vault_name) : null
   app_gateway_key_vault_secret_id = coalesce(
     (
       local.app_gateway_key_vault_secret_id_override != null ?
@@ -54,7 +54,7 @@ locals {
   app_gateway_key_vault_secret_id_host = (
     local.app_gateway_key_vault_secret_id != null &&
     length(regexall("^https://", lower(trimspace(local.app_gateway_key_vault_secret_id)))) > 0 ?
-    lower(regex("^https://([^/]+)/", trimspace(local.app_gateway_key_vault_secret_id))) :
+    lower(regex("^https://([^/]+)/", trimspace(local.app_gateway_key_vault_secret_id))[0]) :
     null
   )
   app_gateway_key_vault_expected_secret_host = (
@@ -119,7 +119,7 @@ locals {
         key_vault_secret_id = local.app_gateway_sanitized_secret_ids[cert_key]
       } : {}
     )
-  } : (
+    } : (
     local.app_gateway_key_vault_secret_id != null ? {
       tls = {
         name                = "tls-cert"
@@ -236,9 +236,9 @@ locals {
     key => value if key != "key_vault_zone"
   }
   private_dns_zones = local.core_flag_platform_landing_zone == true ? local.private_dns_zone_map_without_key_vault : {}
-  private_dns_zones_existing = local.core_flag_platform_landing_zone == false ? { for key, value in local.private_dns_zone_map : key => {
+  private_dns_zones_existing = local.core_flag_platform_landing_zone == false && var.private_dns_zones.existing_zones_resource_group_resource_id != null && var.private_dns_zones.existing_zones_resource_group_resource_id != "" ? { for key, value in local.private_dns_zone_map : key => {
     name        = value.name
-    resource_id = "${coalesce(var.private_dns_zones.existing_zones_resource_group_resource_id, "notused")}/providers/Microsoft.Network/privateDnsZones/${value.name}" #TODO: determine if there is a more elegant way to do this while avoiding errors
+    resource_id = "${var.private_dns_zones.existing_zones_resource_group_resource_id}/providers/Microsoft.Network/privateDnsZones/${value.name}"
     }
   } : {}
   route_table_name = module.naming_firewall_route_table.name
@@ -246,7 +246,7 @@ locals {
     AzureBastionSubnet = {
       enabled          = local.core_flag_platform_landing_zone == true ? try(local.core_vnet_definition.subnets["AzureBastionSubnet"].enabled, true) : try(local.core_vnet_definition.subnets["AzureBastionSubnet"].enabled, false)
       name             = "AzureBastionSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["AzureBastionSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AzureBastionSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 5)]
+      address_prefixes = try(local.core_vnet_definition.subnets["AzureBastionSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AzureBastionSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 7)]
       route_table      = null
       #network_security_group = {
       #  id = module.nsgs.resource_id
@@ -255,13 +255,13 @@ locals {
     AzureFirewallSubnet = {
       enabled          = local.core_flag_platform_landing_zone == true ? try(local.core_vnet_definition.subnets["AzureFirewallSubnet"].enabled, true) : try(local.core_vnet_definition.subnets["AzureFirewallSubnet"].enabled, false)
       name             = "AzureFirewallSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["AzureFirewallSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AzureFirewallSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 4)]
+      address_prefixes = try(local.core_vnet_definition.subnets["AzureFirewallSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AzureFirewallSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 6)]
       route_table      = null
     }
     JumpboxSubnet = {
       enabled          = local.core_flag_platform_landing_zone == true ? try(local.core_vnet_definition.subnets["JumpboxSubnet"].enabled, true) : try(local.core_vnet_definition.subnets["JumpboxSubnet"].enabled, false)
       name             = try(local.core_vnet_definition.subnets["JumpboxSubnet"].name, null) != null ? local.core_vnet_definition.subnets["JumpboxSubnet"].name : "JumpboxSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["JumpboxSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["JumpboxSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 6)]
+      address_prefixes = try(local.core_vnet_definition.subnets["JumpboxSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["JumpboxSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 6)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -272,7 +272,7 @@ locals {
     AppGatewaySubnet = {
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["AppGatewaySubnet"].name, null) != null ? local.core_vnet_definition.subnets["AppGatewaySubnet"].name : "AppGatewaySubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 5)]
+      address_prefixes = try(local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 5)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -289,7 +289,7 @@ locals {
     APIMSubnet = {
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["APIMSubnet"].name, null) != null ? local.core_vnet_definition.subnets["APIMSubnet"].name : "APIMSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["APIMSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["APIMSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 4)]
+      address_prefixes = try(local.core_vnet_definition.subnets["APIMSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["APIMSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 4)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -300,7 +300,7 @@ locals {
     AIFoundrySubnet = {
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["AIFoundrySubnet"].name, null) != null ? local.core_vnet_definition.subnets["AIFoundrySubnet"].name : "AIFoundrySubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["AIFoundrySubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AIFoundrySubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 3)]
+      address_prefixes = try(local.core_vnet_definition.subnets["AIFoundrySubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AIFoundrySubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 3)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -318,7 +318,7 @@ locals {
     DevOpsBuildSubnet = {
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["DevOpsBuildSubnet"].name, null) != null ? local.core_vnet_definition.subnets["DevOpsBuildSubnet"].name : "DevOpsBuildSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["DevOpsBuildSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["DevOpsBuildSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 2)]
+      address_prefixes = try(local.core_vnet_definition.subnets["DevOpsBuildSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["DevOpsBuildSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 2)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -335,7 +335,7 @@ locals {
       }]
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].name, null) != null ? local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].name : "ContainerAppEnvironmentSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 1)]
+      address_prefixes = try(local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["ContainerAppEnvironmentSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 0)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null
@@ -343,7 +343,7 @@ locals {
     PrivateEndpointSubnet = {
       enabled          = true
       name             = try(local.core_vnet_definition.subnets["PrivateEndpointSubnet"].name, null) != null ? local.core_vnet_definition.subnets["PrivateEndpointSubnet"].name : "PrivateEndpointSubnet"
-      address_prefixes = try(local.core_vnet_definition.subnets["PrivateEndpointSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["PrivateEndpointSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 4, 0)]
+      address_prefixes = try(local.core_vnet_definition.subnets["PrivateEndpointSubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["PrivateEndpointSubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 3, 1)]
       route_table = local.core_flag_platform_landing_zone == true ? {
         id = module.firewall_route_table[0].resource_id
       } : null

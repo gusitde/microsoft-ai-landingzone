@@ -15,12 +15,12 @@ module "search_service" {
   enable_telemetry             = local.core_enable_telemetry # see variables.tf
   local_authentication_enabled = var.ks_ai_search_definition.local_authentication_enabled
   partition_count              = var.ks_ai_search_definition.partition_count
-  private_endpoints = {
+  private_endpoints = (local.core_flag_platform_landing_zone || (length(local.private_dns_zones_existing) > 0 && contains(keys(local.private_dns_zones_existing), "ai_search_zone"))) ? {
     primary = {
       private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.ai_search_zone.resource_id] : [local.private_dns_zones_existing.ai_search_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
-  }
+  } : {}
   public_network_access_enabled = var.ks_ai_search_definition.public_network_access_enabled
   replica_count                 = var.ks_ai_search_definition.replica_count
   semantic_search_sku           = var.ks_ai_search_definition.semantic_search_sku

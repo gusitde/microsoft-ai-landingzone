@@ -41,8 +41,8 @@ DESCRIPTION
 }
 
 variable "environment_code" {
-  type    = string
-  default = null
+  type        = string
+  default     = null
   description = <<DESCRIPTION
 Environment discriminator for the landing zone (for example tst, qlt, prd).
 
@@ -133,9 +133,11 @@ variable "flag_platform_landing_zone" {
   type        = bool
   default     = null
   description = <<DESCRIPTION
-Flag to indicate if the platform landing zone is enabled.
+Flag to indicate if the platform landing zone is enabled. Default is false.
 
-If set to true, the module will deploy resources and connect to a platform landing zone hub. This enables integration with existing hub-and-spoke network architectures and centralized management services.
+If set to true, the module will deploy platform resources like VMs, firewall, bastion, and connect to a platform landing zone hub. This enables integration with existing hub-and-spoke network architectures and centralized management services.
+
+If set to false (default), only core AI services will be deployed without platform infrastructure components.
 DESCRIPTION
 }
 

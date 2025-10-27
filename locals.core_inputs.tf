@@ -10,13 +10,13 @@ locals {
     for k, v in var.map_obj : k => v if try(v, null) != null
   }
 
-  default_location                    = "westeurope"
-  default_project_code                = "aiops"
-  default_environment_code            = "tst"
-  default_resource_group_name         = "rg-aiops-tst-weu-001"
-  default_resource_group_version      = 1
-  default_enable_telemetry            = true
-  default_flag_platform_landing_zone  = true
+  default_location                   = "westeurope"
+  default_project_code               = "aiops"
+  default_environment_code           = "tst"
+  default_resource_group_name        = "rg-aiops-tst-weu-001"
+  default_resource_group_version     = 1
+  default_enable_telemetry           = true
+  default_flag_platform_landing_zone = false
   default_vnet_definition = {
     name                             = "vnet-ai-westeu"
     address_space                    = "10.0.0.0/16"
@@ -48,14 +48,14 @@ locals {
     }
   }
 
-  core_location = coalesce(var.location != null ? trimspace(var.location) : null, local.default_location)
-  core_project_code = coalesce(var.project_code != null ? lower(trimspace(var.project_code)) : null, local.default_project_code)
-  core_environment_code = coalesce(var.environment_code != null ? lower(trimspace(var.environment_code)) : null, local.default_environment_code)
-  core_resource_group_version = coalesce(var.resource_group_version, local.default_resource_group_version)
-  core_resource_group_name = coalesce(var.resource_group_name != null ? trimspace(var.resource_group_name) : null, local.default_resource_group_name)
-  core_enable_telemetry = coalesce(var.enable_telemetry, local.default_enable_telemetry)
+  core_location                   = coalesce(var.location != null ? trimspace(var.location) : null, local.default_location)
+  core_project_code               = coalesce(var.project_code != null ? lower(trimspace(var.project_code)) : null, local.default_project_code)
+  core_environment_code           = coalesce(var.environment_code != null ? lower(trimspace(var.environment_code)) : null, local.default_environment_code)
+  core_resource_group_version     = coalesce(var.resource_group_version, local.default_resource_group_version)
+  core_resource_group_name        = coalesce(var.resource_group_name != null ? trimspace(var.resource_group_name) : null, local.default_resource_group_name)
+  core_enable_telemetry           = coalesce(var.enable_telemetry, local.default_enable_telemetry)
   core_flag_platform_landing_zone = coalesce(var.flag_platform_landing_zone, local.default_flag_platform_landing_zone)
-  core_tags = var.tags
+  core_tags                       = var.tags
 
   requested_vnet_definition           = var.vnet_definition != null ? var.vnet_definition : local.default_vnet_definition
   requested_vnet_definition_sanitized = { for k, v in local.requested_vnet_definition : k => v if try(v, null) != null }
@@ -97,9 +97,9 @@ locals {
     local.default_vnet_definition,
     local.requested_vnet_definition_sanitized,
     {
-      dns_servers = local.sanitized_dns_servers,
-      subnets = local.merged_subnets,
-      vnet_peering_configuration = local.merged_vnet_peering_configuration,
+      dns_servers                    = local.sanitized_dns_servers,
+      subnets                        = local.merged_subnets,
+      vnet_peering_configuration     = local.merged_vnet_peering_configuration,
       vwan_hub_peering_configuration = local.merged_vwan_hub_peering_configuration
     }
   )

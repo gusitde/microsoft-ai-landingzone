@@ -18,7 +18,7 @@ module "avm_res_keyvault_vault" {
   network_acls                    = var.genai_key_vault_definition.network_acls
   private_endpoints = {
     primary = {
-      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [azurerm_private_dns_zone.kv[0].id] : [local.private_dns_zones_existing.key_vault_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [azurerm_private_dns_zone.kv[0].id] : (length(local.private_dns_zones_existing) > 0 && contains(keys(local.private_dns_zones_existing), "key_vault_zone") ? [local.private_dns_zones_existing.key_vault_zone.resource_id] : [])
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }
@@ -60,6 +60,7 @@ module "cosmosdb" {
   capacity = {
     total_throughput_limit = var.genai_cosmosdb_definition.capacity.total_throughput_limit
   }
+  capabilities = var.genai_cosmosdb_definition.capabilities
   consistency_policy = {
     consistency_level       = var.genai_cosmosdb_definition.consistency_policy.consistency_level
     max_interval_in_seconds = var.genai_cosmosdb_definition.consistency_policy.max_interval_in_seconds
@@ -84,13 +85,13 @@ module "cosmosdb" {
   multiple_write_locations_enabled      = var.genai_cosmosdb_definition.multiple_write_locations_enabled
   network_acl_bypass_for_azure_services = true
   partition_merge_enabled               = var.genai_cosmosdb_definition.partition_merge_enabled
-  private_endpoints = {
+  private_endpoints = (local.core_flag_platform_landing_zone || (length(local.private_dns_zones_existing) > 0 && contains(keys(local.private_dns_zones_existing), "cosmos_sql_zone"))) ? {
     "sql" = {
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
       subresource_name              = "sql"
       private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.cosmos_sql_zone.resource_id] : [local.private_dns_zones_existing.cosmos_sql_zone.resource_id]
     }
-  }
+  } : {}
   public_network_access_enabled = var.genai_cosmosdb_definition.public_network_access_enabled
 
   depends_on = [module.private_dns_zones, module.hub_vnet_peering]
@@ -120,19 +121,20 @@ module "storage_account" {
     }
   } : {}
   enable_telemetry = local.core_enable_telemetry
-  private_endpoints = {
+  private_endpoints = (local.core_flag_platform_landing_zone || length(local.private_dns_zones_existing) > 0) ? {
     for endpoint in var.genai_storage_account_definition.endpoint_types :
     endpoint => {
       name                          = module.naming_genai_storage_account_private_endpoints[endpoint].name
-      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones["storage_${lower(endpoint)}_zone"].resource_id] : [local.private_dns_zones_existing["storage_${lower(endpoint)}_zone"].resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones["storage_${lower(endpoint)}_zone"].resource_id] : (contains(keys(local.private_dns_zones_existing), "storage_${lower(endpoint)}_zone") ? [local.private_dns_zones_existing["storage_${lower(endpoint)}_zone"].resource_id] : [])
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
       subresource_name              = endpoint
     }
-  }
-  public_network_access_enabled = var.genai_storage_account_definition.public_network_access_enabled
-  role_assignments              = local.genai_storage_account_role_assignments
-  shared_access_key_enabled     = var.genai_storage_account_definition.shared_access_key_enabled
-  tags                          = var.genai_storage_account_definition.tags
+  } : {}
+  public_network_access_enabled   = var.genai_storage_account_definition.public_network_access_enabled
+  role_assignments                = local.genai_storage_account_role_assignments
+  shared_access_key_enabled       = var.genai_storage_account_definition.shared_access_key_enabled
+  default_to_oauth_authentication = var.genai_storage_account_definition.default_to_oauth_authentication
+  tags                            = var.genai_storage_account_definition.tags
 
   depends_on = [module.private_dns_zones, module.hub_vnet_peering]
 }
@@ -153,12 +155,12 @@ module "containerregistry" {
     }
   } : {}
   enable_telemetry = local.core_enable_telemetry
-  private_endpoints = {
+  private_endpoints = (local.core_flag_platform_landing_zone || (length(local.private_dns_zones_existing) > 0 && contains(keys(local.private_dns_zones_existing), "container_registry_zone"))) ? {
     container_registry = {
       private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.container_registry_zone.resource_id] : [local.private_dns_zones_existing.container_registry_zone.resource_id]
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
-  }
+  } : {}
   public_network_access_enabled = var.genai_container_registry_definition.public_network_access_enabled
   role_assignments              = local.genai_container_registry_role_assignments
   zone_redundancy_enabled       = length(local.region_zones) > 1 ? var.genai_container_registry_definition.zone_redundancy_enabled : false
@@ -180,7 +182,7 @@ module "app_configuration" {
   local_auth_enabled              = var.genai_app_configuration_definition.local_auth_enabled
   private_endpoints = {
     app_configuration = {
-      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.app_configuration_zone.resource_id] : [local.private_dns_zones_existing.app_configuration_zone.resource_id]
+      private_dns_zone_resource_ids = local.core_flag_platform_landing_zone ? [module.private_dns_zones.app_configuration_zone.resource_id] : (length(local.private_dns_zones_existing) > 0 && contains(keys(local.private_dns_zones_existing), "app_configuration_zone") ? [local.private_dns_zones_existing.app_configuration_zone.resource_id] : [])
       subnet_resource_id            = module.ai_lz_vnet.subnets["PrivateEndpointSubnet"].resource_id
     }
   }

@@ -3,12 +3,12 @@ variable "ks_ai_search_definition" {
     deploy                        = optional(bool, true)
     name                          = optional(string)
     enable_diagnostic_settings    = optional(bool, true)
-    sku                           = optional(string, "standard")
+    sku                           = optional(string, "basic")
     local_authentication_enabled  = optional(bool, true)
     partition_count               = optional(number, 1)
     public_network_access_enabled = optional(bool, false)
-    replica_count                 = optional(number, 2)
-    semantic_search_sku           = optional(string, "standard")
+    replica_count                 = optional(number, 1)
+    semantic_search_sku           = optional(string, "free")
     tags                          = optional(map(string), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
@@ -28,12 +28,12 @@ Configuration object for the Azure AI Search service to be created as part of th
 
 - `deploy` - (Optional) Deploy the AI Search service. Default is true.
 - `name` - (Optional) The name of the AI Search service. If not provided, a name will be generated.
-- `sku` - (Optional) The SKU of the AI Search service. Default is "standard".
+- `sku` - (Optional) The SKU of the AI Search service. Default is "basic".
 - `local_authentication_enabled` - (Optional) Whether local authentication is enabled. Default is true.
 - `partition_count` - (Optional) The number of partitions for the search service. Default is 1.
 - `public_network_access_enabled` - (Optional) Whether public network access is enabled. Default is false.
-- `replica_count` - (Optional) The number of replicas for the search service. Default is 2.
-- `semantic_search_sku` - (Optional) The SKU for semantic search capabilities. Default is "standard".
+- `replica_count` - (Optional) The number of replicas for the search service. Default is 1.
+- `semantic_search_sku` - (Optional) The SKU for semantic search capabilities. Default is "free".
 - `tags` - (Optional) Map of tags to assign to the AI Search service.
 - `role_assignments` - (Optional) Map of role assignments to create on the AI Search service. The map key is deliberately arbitrary to avoid issues where map keys may be unknown at plan time.
   - `role_definition_id_or_name` - The role definition ID or name to assign.

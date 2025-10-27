@@ -9,7 +9,7 @@ locals {
       protocols             = ["TCP", "UDP"]
     }
   ]
-  firewall_policy_network_ruleset            = concat(local.default_outbound_network_ruleset, try(var.firewall_policy_definition.network_ruleset, []))
+  firewall_policy_network_ruleset = concat(local.default_outbound_network_ruleset, try(var.firewall_policy_definition.network_ruleset, []))
   firewall_policy_rule_collection_group_name = coalesce(
     var.firewall_policy_definition.network_policy_rule_collection_group_name,
     module.naming_firewall_policy_rule_collection_group.name
