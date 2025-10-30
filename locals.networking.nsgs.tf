@@ -16,11 +16,11 @@ locals {
       name                         = "Allow-AppGW_Management"
       access                       = "Allow"
       destination_address_prefixes = try(local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix, null) != null ? [local.core_vnet_definition.subnets["AppGatewaySubnet"].address_prefix] : [cidrsubnet(local.core_vnet_definition.address_space, 8, 5)]
-      destination_port_range       = "65200-65535"
+      destination_port_ranges      = ["65200-65535"]
       direction                    = "Inbound"
       priority                     = 110
       protocol                     = "*"
-      source_address_prefix        = "Internet"
+      source_address_prefix        = "GatewayManager"
       source_port_range            = "*"
     }
     "appgw_rule02" = {
