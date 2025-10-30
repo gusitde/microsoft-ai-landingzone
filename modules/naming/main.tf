@@ -242,7 +242,7 @@ locals {
     )
   ) : null
   azurecaf_cleaned = local.azurecaf_without_prefix != null && local.azurecaf_without_prefix != "" ? local.azurecaf_without_prefix : local.azurecaf_result
-  
+
   # Resources that require alphanumeric-only names (no dashes)
   requires_alphanumeric_only = contains(["storage_account", "container_registry"], var.resource)
 }
@@ -252,13 +252,13 @@ output "name" {
     !local.use_azurecaf ? (
       local.requires_alphanumeric_only ? (
         # For storage accounts and container registries, use fallback logic without dashes
-        local.unique_auto && length(random_string.unique_suffix) > 0 ? 
+        local.unique_auto && length(random_string.unique_suffix) > 0 ?
         substr("${local.fallback_base}${random_string.unique_suffix[0].result}", 0, local.fallback_length) :
         substr(local.fallback_base, 0, local.fallback_length)
       ) : (
         # For other resources, use human-readable names with dashes
-        local.unique_auto && length(random_string.unique_suffix) > 0 ? 
-        "${local.human_name}-${random_string.unique_suffix[0].result}" : 
+        local.unique_auto && length(random_string.unique_suffix) > 0 ?
+        "${local.human_name}-${random_string.unique_suffix[0].result}" :
         local.human_name
       )
     ) : substr(local.fallback_base, 0, local.fallback_length)

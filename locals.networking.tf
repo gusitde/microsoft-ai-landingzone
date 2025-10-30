@@ -141,7 +141,10 @@ locals {
       contains(local.app_gateway_https_frontend_port_names, try(listener_value.frontend_port_name, "")) || lower(try(listener_value.protocol, "")) == "https" ? merge(
         {
           protocol    = "Https"
-          require_sni = true
+          require_sni = try(
+            listener_value.require_sni,
+            (try(length(listener_value.host_name), 0) > 0) || (try(length(listener_value.host_names), 0) > 0)
+          )
         },
         local.app_gateway_primary_ssl_certificate_name != null ? {
           ssl_certificate_name = local.app_gateway_primary_ssl_certificate_name
