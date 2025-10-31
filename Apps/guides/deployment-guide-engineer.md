@@ -112,33 +112,38 @@ This repository uses Terraform variables for configuration. Key files:
 
 ### Step 2.3: Configure Required Variables
 
-Open `terraform.tfvars` and configure the following variables:
+Use the sample defaults in [`landingzone.defaults.auto.tfvars`](../../landingzone.defaults.auto.tfvars) as a reference point, then open `terraform.tfvars` and configure the core variables for your deployment. Each entry below now includes inline comments detailing the Azure-safe character set and maximum length so you stay within the Cloud Adoption Framework (CAF) boundaries enforced by [`modules/naming`](../../modules/naming/main.tf) and the variable validations in [`variables.tf`](../../variables.tf):
 
 ```hcl
-# Basic Configuration
-location            = "East US"
-environment         = "dev"
-project_name        = "ai-landing-zone"
+# Basic configuration — sets the primary region, environment code, and workload code that drive CAF-compliant names.
+location         = "eastus"  # 2-36 lowercase letters, no spaces; must match a valid Azure region short name so CAF abbreviations resolve correctly.
+environment_code = "tst"     # Exactly 3 lowercase letters; allowed values are tst, qlt, or prd per the naming module validation.
+project_code     = "aiops"   # 2-6 lowercase letters or digits; forms the CAF prefix applied to every resource name.
 
-# Resource Group
-resource_group_name = "rg-ai-landingzone-dev-eastus"
+# Resource group targeting — align this with your enterprise naming standard or pre-created resource group.
+resource_group_name    = "rg-aiops-tst-eus-001"  # 1-90 characters using lowercase letters, digits, hyphens, periods, parentheses, or underscores to satisfy Azure Resource Group rules.
+resource_group_version = 1                       # Integer 1-99; stored as a two-digit suffix to keep resource group names unique without exceeding Azure limits.
 
-# Naming Configuration
-naming_prefix       = "ailz"
-naming_suffix       = "001"
-
-# Tags
+# Governance tags — propagate required metadata for cost management and ownership.
 tags = {
-  Environment = "Development"
-  Project     = "AI Landing Zone"
-  ManagedBy   = "Terraform"
-  Owner       = "<your-email>"
-  CostCenter  = "<cost-center-code>"
+  Environment = "Development"     # Up to 256 printable characters; letters, numbers, spaces, and hyphens are typical for Azure tag values.
+  Project     = "AI Landing Zone" # Up to 256 printable characters; use letters, numbers, spaces, or hyphens for readability in Azure portals.
+  ManagedBy   = "Terraform"       # Up to 256 printable characters; letters only keeps governance scans simple.
+  Owner       = "<your-email>"    # Up to 256 printable characters; email format stays within Azure tag character rules.
+  CostCenter  = "<cost-center-code>" # Up to 256 printable characters; letters, numbers, and hyphens keep billing integrations consistent.
 }
 
-# Enable Telemetry (Required for AVM modules)
-enable_telemetry = true
+# Telemetry flag — required for Azure Verified Modules (AVM) usage in this repository.
+enable_telemetry = true  # Boolean true/false; keep enabled to comply with AVM module requirements unless your organization has an approved exception.
 ```
+
+> ℹ️ **How these variables are consumed:** The core values above flow into the reusable naming engine (`modules/naming`) and the typed variable files in the repository (for example, `variables.networking.tf`, `variables.apim.tf`). They ultimately shape resource names, determine which features deploy, and populate tags on every asset.
+
+When you need to go beyond the baseline inputs:
+
+- **Review built-in defaults:** The repository ships with a comprehensive [`landingzone.defaults.auto.tfvars`](../../landingzone.defaults.auto.tfvars) file that showcases recommended values for networking, API Management, bastion, firewall, and other feature toggles. Use it as a template when crafting environment-specific overrides.
+- **Explore the naming helpers:** The [`modules/naming/main.tf`](../../modules/naming/main.tf) module documents allowable region abbreviations, resource-type short codes, and uniqueness controls so you can confidently adjust the inputs that compose your resource prefixes without breaking Azure naming rules.
+- **Adjust feature-specific settings:** Each `variables.<domain>.tf` file (for example, [`variables.networking.tf`](../../variables.networking.tf), [`variables.apim.tf`](../../variables.apim.tf), [`variables.genai_services.tf`](../../variables.genai_services.tf)) declares additional flags and nested objects. Copy the blocks you need into `terraform.tfvars`—such as `apim_definition`, `firewall_definition`, or `genai_storage_account_definition`—and update only the properties relevant to your deployment.
 
 ### Step 2.4: Configure Backend State
 
