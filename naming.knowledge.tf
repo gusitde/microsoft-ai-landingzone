@@ -3,6 +3,7 @@ module "naming_knowledge_search_service" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "search_service"
   descriptor  = "ks"
 }
@@ -12,6 +13,7 @@ module "naming_knowledge_bing_grounding" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "bing_grounding_account"
   descriptor  = "ks"
 }

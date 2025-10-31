@@ -3,6 +3,7 @@ module "naming_virtual_network" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "virtual_network"
 }
 
@@ -11,6 +12,7 @@ module "naming_private_dns_vnet_link" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "private_dns_zone_virtual_network_link"
   descriptor  = "core"
 }
@@ -20,6 +22,7 @@ module "naming_virtual_network_peering_forward" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "virtual_network_peering"
   descriptor  = "fwd"
 }
@@ -29,6 +32,7 @@ module "naming_virtual_network_peering_reverse" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "virtual_network_peering"
   descriptor  = "rev"
   index       = 2
@@ -39,6 +43,7 @@ module "naming_network_security_group" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "network_security_group"
 }
 
@@ -47,6 +52,7 @@ module "naming_firewall_route_table" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "route_table"
   descriptor  = "fw"
 }
@@ -56,6 +62,7 @@ module "naming_firewall" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "azure_firewall"
 }
 
@@ -64,6 +71,7 @@ module "naming_firewall_public_ip" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "public_ip_address"
   descriptor  = "fw"
 }
@@ -73,6 +81,7 @@ module "naming_firewall_policy" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "firewall_policy"
 }
 
@@ -81,6 +90,7 @@ module "naming_firewall_policy_rule_collection_group" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "firewall_policy_rule_collection_group"
 }
 
@@ -89,6 +99,7 @@ module "naming_bastion_host" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "bastion_host"
 }
 
@@ -97,6 +108,7 @@ module "naming_application_gateway" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "application_gateway"
 }
 
@@ -105,6 +117,7 @@ module "naming_application_gateway_public_ip" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "public_ip_address"
   descriptor  = "appgw"
 }
@@ -114,6 +127,7 @@ module "naming_application_gateway_waf_policy" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "web_application_firewall_policy"
 }
 
@@ -122,6 +136,7 @@ module "naming_virtual_hub_connection" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "virtual_hub_connection"
   descriptor  = "peer"
 }
@@ -131,6 +146,7 @@ module "naming_appgw_user_assigned_identity" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "user_assigned_identity"
   descriptor  = "appgw"
 }

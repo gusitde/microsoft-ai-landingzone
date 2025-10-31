@@ -3,6 +3,7 @@ module "naming_ai_foundry_account" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "cognitive_account"
   descriptor  = "foundry"
 }

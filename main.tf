@@ -3,6 +3,7 @@ module "naming_resource_group" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix  = local.core_naming_prefix
   resource    = "resource_group"
   rg_version  = local.core_resource_group_version
 }

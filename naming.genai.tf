@@ -3,6 +3,7 @@ module "naming_genai_key_vault" {
   project           = local.core_project_code  # Keep same as other resources for alignment
   environment       = local.core_environment_code
   location          = local.core_location
+  org_prefix        = local.core_naming_prefix
   resource          = "key_vault"
   descriptor        = ""  # Remove genai to fit Azure's 24-char limit
   unique            = true
@@ -15,6 +16,7 @@ module "naming_genai_cosmos_account" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "cosmosdb_account"
   descriptor  = "genai"
 }
@@ -24,6 +26,7 @@ module "naming_genai_storage_account" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "storage_account"
   descriptor  = "genai"
 }
@@ -34,6 +37,7 @@ module "naming_genai_storage_account_private_endpoints" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "private_endpoint"
   descriptor  = "genai-${lower(each.value)}"
   index       = 1
@@ -44,6 +48,7 @@ module "naming_genai_container_registry" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "container_registry"
   descriptor  = "genai"
 }
@@ -53,6 +58,7 @@ module "naming_genai_app_configuration" {
   project     = local.core_project_code
   environment = local.core_environment_code
   location    = local.core_location
+  org_prefix = local.core_naming_prefix
   resource    = "app_configuration"
   descriptor  = "genai"
 }

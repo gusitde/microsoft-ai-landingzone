@@ -7,6 +7,9 @@ subscription_id            = "000000000000000000000000000000"
 location                   = "swedencentral"
 project_code               = "aiops"
 environment_code           = "tst"
+naming_prefix              = "azr" # Change this to replace the default "azr" prefix applied to every generated resource name.
+# To adjust the order of the tokens that make up each name (prefix, project, environment, region, resource, descriptor), edit the
+# `base_parts` list in `modules/naming/main.tf` so the elements are arranged to match your organizational convention.
 resource_group_name        = "rg-aiops-tst-sec-001"
 resource_group_version     = 1
 enable_telemetry           = true

@@ -55,6 +55,17 @@ variable "descriptor" {
   description = "Optional descriptor appended to the resource type."
 }
 
+variable "org_prefix" {
+  type        = string
+  default     = "azr"
+  description = "Organization-specific prefix prepended to all generated resource names."
+
+  validation {
+    condition     = trimspace(var.org_prefix) != ""
+    error_message = "org_prefix cannot be empty."
+  }
+}
+
 variable "index" {
   type        = number
   default     = 1
@@ -185,9 +196,10 @@ locals {
   env     = lower(var.environment)
   region  = lookup(local.region_abbr, lower(var.location), lower(var.location))
   rshort  = lookup(local.type_abbr, var.resource, var.resource)
+  prefix  = lower(trimspace(var.org_prefix))
 
   base_parts = compact([
-    "azr",  # Always include "azr" prefix for organizational standards
+    local.prefix,
     local.project,
     local.env,
     local.region,
