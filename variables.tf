@@ -98,6 +98,23 @@ DESCRIPTION
   }
 }
 
+variable "naming_prefix" {
+  type        = string
+  default     = null
+  description = <<DESCRIPTION
+Optional override for the organization-specific prefix used at the beginning of every generated resource name.
+
+Leave this value as `null` to keep the default `azr` prefix. Supply a short alphanumeric token (for example `contoso`) to match
+your internal naming standards. The prefix is automatically lowercased and applied consistently across all naming modules.
+DESCRIPTION
+  nullable    = true
+
+  validation {
+    condition     = var.naming_prefix == null || trimspace(var.naming_prefix) != ""
+    error_message = "naming_prefix cannot be an empty string."
+  }
+}
+
 variable "enable_telemetry" {
   type        = bool
   default     = null

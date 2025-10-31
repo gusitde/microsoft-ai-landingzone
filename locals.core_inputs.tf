@@ -17,6 +17,7 @@ locals {
   default_resource_group_version     = 1
   default_enable_telemetry           = true
   default_flag_platform_landing_zone = false
+  default_naming_prefix              = "azr"
   default_vnet_definition = {
     name                             = "vnet-ai-westeu"
     address_space                    = "10.0.0.0/16"
@@ -55,6 +56,7 @@ locals {
   core_resource_group_name        = coalesce(var.resource_group_name != null ? trimspace(var.resource_group_name) : null, local.default_resource_group_name)
   core_enable_telemetry           = coalesce(var.enable_telemetry, local.default_enable_telemetry)
   core_flag_platform_landing_zone = coalesce(var.flag_platform_landing_zone, local.default_flag_platform_landing_zone)
+  core_naming_prefix              = coalesce(var.naming_prefix != null ? lower(trimspace(var.naming_prefix)) : null, local.default_naming_prefix)
   core_tags                       = var.tags
 
   requested_vnet_definition           = var.vnet_definition != null ? var.vnet_definition : local.default_vnet_definition
