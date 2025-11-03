@@ -12,6 +12,7 @@ module "jumpvm" {
 
   location = azurerm_resource_group.this.location
   name     = local.jump_vm_name
+  computer_name = local.jump_vm_computer_name
   network_interfaces = {
     network_interface_1 = {
       name = module.naming_jump_network_interface.name
