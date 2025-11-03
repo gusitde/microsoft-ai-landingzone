@@ -1,0 +1,422 @@
+{
+  "naming_apim_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "azr-aiops-tst-sec-apim-01"
+  },
+  "naming_foundry_account_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "azr-aiops-tst-sec-cog-foundry-01"
+  },
+  "naming_genai_cosmos_account_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "azr-aiops-tst-sec-cosmos-genai-01"
+  },
+  "naming_genai_key_vault_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "azr-aiops-tst-sec-kv-o6a"
+  },
+  "resource_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "tbd"
+  },
+  "subnets": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "AIFoundrySubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "delegation": [
+              "tuple",
+              [
+                [
+                  "object",
+                  {
+                    "name": "string",
+                    "service_delegation": [
+                      "object",
+                      {
+                        "actions": [
+                          "tuple",
+                          [
+                            "string"
+                          ]
+                        ],
+                        "name": "string"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "APIMSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "AppGatewaySubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "delegation": [
+              "tuple",
+              [
+                [
+                  "object",
+                  {
+                    "name": "string",
+                    "service_delegation": [
+                      "object",
+                      {
+                        "name": "string"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "AzureBastionSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "route_table": "dynamic"
+          }
+        ],
+        "AzureFirewallSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "route_table": "dynamic"
+          }
+        ],
+        "ContainerAppEnvironmentSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "delegation": [
+              "tuple",
+              [
+                [
+                  "object",
+                  {
+                    "name": "string",
+                    "service_delegation": [
+                      "object",
+                      {
+                        "name": "string"
+                      }
+                    ]
+                  }
+                ]
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "DevOpsBuildSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "JumpboxSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ],
+        "PrivateEndpointSubnet": [
+          "object",
+          {
+            "address_prefixes": [
+              "tuple",
+              [
+                "string"
+              ]
+            ],
+            "enabled": "bool",
+            "name": "string",
+            "network_security_group": [
+              "object",
+              {
+                "id": "string"
+              }
+            ],
+            "route_table": [
+              "object",
+              {
+                "id": "string"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "value": {
+      "AIFoundrySubnet": {
+        "address_prefixes": [
+          "10.0.1.128/25"
+        ],
+        "delegation": [
+          {
+            "name": "AgentServiceDelegation",
+            "service_delegation": {
+              "actions": [
+                "Microsoft.Network/virtualNetworks/subnets/join/action"
+              ],
+              "name": "Microsoft.App/environments"
+            }
+          }
+        ],
+        "enabled": true,
+        "name": "AIFoundrySubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "APIMSubnet": {
+        "address_prefixes": [
+          "10.0.2.0/25"
+        ],
+        "enabled": true,
+        "name": "APIMSubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "AppGatewaySubnet": {
+        "address_prefixes": [
+          "10.0.2.128/25"
+        ],
+        "delegation": [
+          {
+            "name": "AppGatewaySubnetDelegation",
+            "service_delegation": {
+              "name": "Microsoft.Network/applicationGateways"
+            }
+          }
+        ],
+        "enabled": true,
+        "name": "AppGatewaySubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "AzureBastionSubnet": {
+        "address_prefixes": [
+          "10.0.3.128/25"
+        ],
+        "enabled": true,
+        "name": "AzureBastionSubnet",
+        "route_table": null
+      },
+      "AzureFirewallSubnet": {
+        "address_prefixes": [
+          "10.0.3.0/25"
+        ],
+        "enabled": true,
+        "name": "AzureFirewallSubnet",
+        "route_table": null
+      },
+      "ContainerAppEnvironmentSubnet": {
+        "address_prefixes": [
+          "10.0.0.0/25"
+        ],
+        "delegation": [
+          {
+            "name": "ContainerAppEnvironmentSubnetDelegation",
+            "service_delegation": {
+              "name": "Microsoft.App/environments"
+            }
+          }
+        ],
+        "enabled": true,
+        "name": "ContainerAppEnvironmentSubnet",
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "DevOpsBuildSubnet": {
+        "address_prefixes": [
+          "10.0.1.0/25"
+        ],
+        "enabled": true,
+        "name": "DevOpsBuildSubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "JumpboxSubnet": {
+        "address_prefixes": [
+          "10.0.3.0/25"
+        ],
+        "enabled": true,
+        "name": "JumpboxSubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      },
+      "PrivateEndpointSubnet": {
+        "address_prefixes": [
+          "10.0.0.128/25"
+        ],
+        "enabled": true,
+        "name": "PrivateEndpointSubnet",
+        "network_security_group": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/networkSecurityGroups/azr-aiops-tst-sec-nsg-01"
+        },
+        "route_table": {
+          "id": "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-001/providers/Microsoft.Network/routeTables/azr-aiops-tst-sec-rt-fw-01"
+        }
+      }
+    }
+  }
+}
