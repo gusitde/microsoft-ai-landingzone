@@ -3,7 +3,7 @@
 # Update them as needed to target a different environment.
 #
 # Uncomment and populate the subscription ID if Terraform cannot infer it from your Azure login context.
-subscription_id            = "000000-0000-0000-0000-000000000000"
+subscription_id            = "06bfa713-9d6d-44a9-8643-b39e003e136b"
 location                   = "swedencentral"
 project_code               = "aaaa"
 environment_code           = "tst"

@@ -26,22 +26,31 @@ This comprehensive deployment guide provides step-by-step instructions for engin
 1. Download Git from [https://git-scm.com/downloads](https://git-scm.com/downloads)
 2. Install Git with default settings
 3. Verify installation by opening a terminal and running:
+
   ```bash
   git --version
   ```
 
 #### Install Terraform
-1. Download Terraform from [https://www.terraform.io/downloads](https://www.terraform.io/downloads)
-2. Extract the executable and add to your system PATH
+
+1. This repo ships with a pinned Terraform binary under `tools/terraform/terraform.exe` (Windows). You can use it directly without installing globally.
+2. Optional: Install Terraform from [https://www.terraform.io/downloads](https://www.terraform.io/downloads) if you prefer a global install and PATH setup.
 3. Verify installation:
-  ```bash
+
+  ```powershell
+  # Using the repo-pinned binary
+  .\tools\terraform\terraform.exe --version
+
+  # Or, if installed globally
   terraform --version
   ```
 
 #### Install Azure CLI
+
 1. Download Azure CLI from [https://docs.microsoft.com/en-us/cli/azure/install-azure-cli](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 2. Install following platform-specific instructions
 3. Verify installation:
+
   ```bash
   az --version
   ```
@@ -78,17 +87,17 @@ Install the following VS Code extensions:
 ### Step 1.4: Authenticate with Azure
 
 1. Open a terminal in VS Code (Terminal → New Terminal)
-2. Login to Azure:
-  ```bash
-  az login
-  ```
-3. Set your subscription:
-  ```bash
-  az account set --subscription "<your-subscription-id>"
-  ```
-4. Verify your account:
-  ```bash
-  az account show
+2. Login to Azure (device code flow recommended for remote/headless sessions):
+  ```powershell
+  # Device code helper script (recommended)
+  .\scripts\azure-login-devicecode.ps1 -TenantId "<tenant-guid>" -SubscriptionId "<subscription-guid>"
+
+  # Or Azure CLI directly
+  az login --use-device-code --tenant <tenant-guid>
+  az account set --subscription "<subscription-guid>"
+
+  # Verify your account
+  az account show -o table
   ```
 
 ---
@@ -192,24 +201,68 @@ Review your configuration files for:
 
 ## Phase 3: Deploy Infrastructure
 
+> Preflight first: This repo includes documented “preflight validation agents” that catch most last‑minute apply issues (module wiring, provider versions, subscription readiness, quotas, policy blocks). See `AGENTS.md` → “Preflight validation agents (repo-specific)”. A summary is provided below.
+
+### Step 3.0: Run preflight validation agents (recommended)
+
+1) Terraform architecture validator
+```powershell
+# From repo root
+.\tools\terraform\terraform.exe fmt -recursive
+.\tools\terraform\terraform.exe init
+.\tools\terraform\terraform.exe validate
+
+# AVM checks (Windows PowerShell)
+$env:PORCH_NO_TUI = 1
+./avm pre-commit
+git add .
+git commit -m "chore: avm pre-commit"
+$env:PORCH_NO_TUI = 1
+./avm pr-check
+```
+
+2) Azure subscription and architecture pre-check
+```powershell
+./scripts/azure-login-devicecode.ps1 -TenantId "<tenant-guid>" -SubscriptionId "<subscription-guid>"
+
+# Confirm context
+az account show -o table
+
+# Check provider registrations (register any missing)
+az provider list --query "[?registrationState!='Registered'].namespace" -o table
+
+# Quota spot checks
+az vm list-usage -l <region> -o table
+az network list-usages -l <region> -o table
+```
+
+3) Optional dry-run workflow checks
+```powershell
+# Safe drift check (no changes applied)
+.\tools\terraform\terraform.exe apply -refresh-only -auto-approve
+
+# CI-style gating
+.\tools\terraform\terraform.exe plan -detailed-exitcode
+```
+
 ### Step 3.1: Initialize Terraform
 
 1. Navigate to the Terraform module directory
 2. Initialize Terraform:
-  ```bash
-  terraform init
+  ```powershell
+  .\tools\terraform\terraform.exe init
   ```
 3. Verify successful initialization (plugins downloaded, backend configured)
 
 ### Step 3.2: Format and Validate Code
 
 1. Format Terraform files:
-  ```bash
-  terraform fmt -recursive
+  ```powershell
+  .\tools\terraform\terraform.exe fmt -recursive
   ```
 2. Validate configuration:
-  ```bash
-  terraform validate
+  ```powershell
+  .\tools\terraform\terraform.exe validate
   ```
 3. Review and fix any validation errors
 
@@ -217,37 +270,49 @@ Review your configuration files for:
 
 **CRITICAL:** These checks are mandatory before deployment:
 
-```bash
-export PORCH_NO_TUI=1
+```powershell
+# Windows PowerShell
+$env:PORCH_NO_TUI = 1
 ./avm pre-commit
-```
 
-If changes are made, commit them:
-```bash
+# If changes are made, commit them
 git add .
 git commit -m "chore: avm pre-commit fixes"
+```
+
+```bash
+# Linux/macOS
+export PORCH_NO_TUI=1
+./avm pre-commit
+git add . && git commit -m "chore: avm pre-commit fixes"
 ```
 
 ### Step 3.4: Review Terraform Plan
 
 1. Generate execution plan:
-  ```bash
-  terraform plan -out=tfplan
+  ```powershell
+  .\tools\terraform\terraform.exe plan -out=plan.tfplan
   ```
 2. Review the plan carefully:
   - Resources to be created
   - Resources to be modified
   - Resources to be destroyed (should be none for initial deployment)
-3. Save the plan output for documentation:
-  ```bash
-  terraform show -json tfplan > plan.json
+3. Save the plan output for documentation and artifacts:
+  ```powershell
+  # Machine-readable plan JSON for test plan generation
+  .\tools\terraform\terraform.exe show -json plan.tfplan > plan.json
+
+  # Archive plan artifacts
+  $ts = Get-Date -Format yyyy-MM-dd_HH-mm-ss
+  .\tools\terraform\terraform.exe show -json plan.tfplan > artifacts\plan_$ts.json
+  .\tools\terraform\terraform.exe show plan.tfplan > artifacts\plan_$ts.txt
   ```
 
 ### Step 3.5: Execute Deployment
 
 1. Apply the Terraform plan:
-  ```bash
-  terraform apply tfplan
+  ```powershell
+  .\tools\terraform\terraform.exe apply plan.tfplan
   ```
 2. Monitor the deployment progress
 3. Note any warnings or errors
@@ -258,12 +323,12 @@ git commit -m "chore: avm pre-commit fixes"
 1. Check Azure Portal for created resources
 2. Verify resource configurations match requirements
 3. Run Terraform state check:
-  ```bash
-  terraform state list
+  ```powershell
+  .\tools\terraform\terraform.exe state list
   ```
 4. Export outputs:
-  ```bash
-  terraform output > deployment-outputs.txt
+  ```powershell
+  .\tools\terraform\terraform.exe output > deployment-outputs.txt
   ```
 
 ### Step 3.7: Document Deployment
@@ -288,7 +353,34 @@ Document the following:
 - Success criteria
 - Rollback procedures if tests fail
 
-### Step 4.2: Create Test Plan Document
+### Step 4.2: Create Test Plan Document (automatic generation recommended)
+
+You can auto-generate a Markdown test plan from the Terraform plan using the repo’s Python utility. It produces a table of Test Case, Test Steps, Expected Results, and Actual Results.
+
+```powershell
+# Ensure you have Python 3 available
+python --version
+
+# From repo root, generate plan.json if not already created
+.\tools\terraform\terraform.exe plan -out=plan.tfplan
+.\tools\terraform\terraform.exe show -json plan.tfplan > plan.json
+
+# Run the generator
+python Apps\test-plan\src\main.py plan.json
+
+# Output file
+# test-plans\test-plan-YYYY-MM-DD.md
+```
+
+Alternatively, you can generate a test plan from the current root state using the Terraform template in `Apps/test-plan/testplan`:
+
+```powershell
+terraform -chdir=Apps/test-plan init
+terraform -chdir=Apps/test-plan apply -auto-approve
+# Output written to: Apps\test-plan\test-plan-YYYY-MM-DD.md
+```
+
+If you prefer to write a plan manually, use the template below.
 
 Create `test-plan.md` with the following sections:
 
@@ -598,15 +690,15 @@ Create `as-built-documentation.md`:
 
 ### Step 6.3: Export Terraform State Information
 
-```bash
+```powershell
 # Export state as JSON
-terraform state pull > terraform-state.json
+.\tools\terraform\terraform.exe state pull > terraform-state.json
 
 # List all resources
-terraform state list > resources-list.txt
+.\tools\terraform\terraform.exe state list > resources-list.txt
 
 # Export resource details
-terraform show > resource-details.txt
+.\tools\terraform\terraform.exe show > resource-details.txt
 ```
 
 ### Step 6.4: Capture Configuration Evidence
@@ -645,13 +737,13 @@ Document operational procedures:
 ### Step 6.6: Version and Store Documentation
 
 1. Commit all documentation to Git:
-  ```bash
+  ```powershell
   git add docs/as-built/
   git commit -m "docs: add as-built documentation"
   git push
   ```
 2. Create a tagged release:
-  ```bash
+  ```powershell
   git tag -a v1.0.0 -m "Initial deployment"
   git push origin v1.0.0
   ```
@@ -686,37 +778,38 @@ Document operational procedures:
 
 Schedule and conduct handover meeting with operations team:
 
-**Agenda:**
-1. Architecture overview (15 min)
-2. Deployed services demonstration (20 min)
-3. Operational procedures review (15 min)
-4. Q&A session (15 min)
-5. Access handover (10 min)
+```powershell
+# Initialize
+.\tools\terraform\terraform.exe init
 
-**Document Attendance:**
-- Attendees
-- Questions raised
-- Action items
-- Sign-off
+# Format code
+.\tools\terraform\terraform.exe fmt -recursive
 
-### Step 7.3: Security Handover
+# Validate
+.\tools\terraform\terraform.exe validate
 
-1. **Access Review:**
-  - Document all access permissions granted during project
-  - Remove temporary access
-  - Ensure operations team has necessary access
+# Plan
+.\tools\terraform\terraform.exe plan -out=plan.tfplan
 
-2. **Secrets Management:**
-  - Verify all secrets are in Key Vault
-  - Document secret rotation procedures
-  - Provide access to secrets to authorized personnel
+# Apply
+.\tools\terraform\terraform.exe apply plan.tfplan
 
-3. **Security Contact:**
-  - Provide security contact information
-  - Document security incident procedures
+# Destroy (use with caution)
+.\tools\terraform\terraform.exe destroy
 
-### Step 7.4: Administrative Closeout
+# Show state
+.\tools\terraform\terraform.exe state list
+.\tools\terraform\terraform.exe state show <resource>
 
+# Import existing resource
+.\tools\terraform\terraform.exe import <resource_type>.<name> <azure_resource_id>
+
+# Refresh state
+.\tools\terraform\terraform.exe refresh
+
+# Output values
+.\tools\terraform\terraform.exe output
+```
 #### Update Project Documentation
 
 1. Update project status to "Completed"
@@ -1007,12 +1100,18 @@ az group export --name <rg-name> > template.json
 ```
 
 ### AVM Commands
+```powershell
+# Windows PowerShell
+$env:PORCH_NO_TUI = 1
+./avm pre-commit
+$env:PORCH_NO_TUI = 1
+./avm pr-check
+```
+
 ```bash
-# Pre-commit checks
+# Linux/macOS
 export PORCH_NO_TUI=1
 ./avm pre-commit
-
-# PR checks
 export PORCH_NO_TUI=1
 ./avm pr-check
 ```
@@ -1025,29 +1124,28 @@ export PORCH_NO_TUI=1
 
 #### Issue: Terraform Init Fails
 **Solution:**
-```bash
+```powershell
 # Clear cache
-rm -rf .terraform
-rm .terraform.lock.hcl
+Remove-Item -Recurse -Force .terraform -ErrorAction SilentlyContinue
+Remove-Item .terraform.lock.hcl -ErrorAction SilentlyContinue
 
 # Reinitialize
-terraform init
+.\tools\terraform\terraform.exe init
 ```
 
 #### Issue: State Lock Error
 **Solution:**
-```bash
+```powershell
 # Force unlock (use with caution)
-terraform force-unlock <lock-id>
+.\tools\terraform\terraform.exe force-unlock <lock-id>
 ```
 
 #### Issue: Azure Provider Authentication Fails
 **Solution:**
-```bash
+```powershell
 # Re-authenticate
 az logout
-az login
-az account set --subscription <subscription-id>
+./scripts/azure-login-devicecode.ps1 -TenantId "<tenant-guid>" -SubscriptionId "<subscription-guid>"
 ```
 
 #### Issue: Module Version Conflict
@@ -1067,12 +1165,12 @@ If deployment fails critically:
 1. **Do Not Panic**
 2. **Document the error** (screenshots, logs)
 3. **Run Terraform Destroy** (only if safe):
-  ```bash
-  terraform destroy -auto-approve
+  ```powershell
+  .\tools\terraform\terraform.exe destroy -auto-approve
   ```
 4. **Restore from backup state** (if needed):
-  ```bash
-  terraform state push terraform-state-backup.json
+  ```powershell
+  .\tools\terraform\terraform.exe state push terraform-state-backup.json
   ```
 5. **Contact team lead** for support
 6. **Document incident** in project log

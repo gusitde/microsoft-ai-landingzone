@@ -1,0 +1,23 @@
+@echo off
+echo Starting subnet imports...
+
+echo Importing AppGatewaySubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"AppGatewaySubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/AppGatewaySubnet"
+
+echo Importing DevOpsBuildSubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"DevOpsBuildSubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/DevOpsBuildSubnet"
+
+echo Importing APIMSubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"APIMSubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/APIMSubnet"
+
+echo Importing AIFoundrySubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"AIFoundrySubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/AIFoundrySubnet"
+
+echo Importing PrivateEndpointSubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"PrivateEndpointSubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/PrivateEndpointSubnet"
+
+echo Importing ContainerAppEnvironmentSubnet...
+terraform.exe import "module.ai_lz_vnet.module.subnet[\"ContainerAppEnvironmentSubnet\"].azapi_resource.subnet" "/subscriptions/06bfa713-9d6d-44a9-8643-b39e003e136b/resourceGroups/rg-aiops-tst-sec-007/providers/Microsoft.Network/virtualNetworks/vnet-ai-swedencentral/subnets/ContainerAppEnvironmentSubnet"
+
+echo All subnet imports completed!
+pause

@@ -9,11 +9,16 @@ resource "azurerm_user_assigned_identity" "appgw_uami" {
 }
 
 resource "azurerm_role_assignment" "kv_secrets_user" {
-  count = local.deploy_app_gateway && local.app_gateway_key_vault_resource_id != null ? 1 : 0
+  count = local.deploy_app_gateway ? 1 : 0
 
-  scope                = local.app_gateway_key_vault_resource_id
+  scope                = module.avm_res_keyvault_vault.resource_id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = azurerm_user_assigned_identity.appgw_uami[count.index].principal_id
+  principal_id         = azurerm_user_assigned_identity.appgw_uami[0].principal_id
+
+  depends_on = [
+    module.avm_res_keyvault_vault,
+    azurerm_user_assigned_identity.appgw_uami
+  ]
 }
 
 resource "azurerm_private_dns_zone" "kv" {
@@ -33,7 +38,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_link" {
 }
 
 resource "azurerm_private_endpoint" "kv" {
-  count = local.core_flag_platform_landing_zone && local.app_gateway_key_vault_resource_id != null ? 1 : 0
+  count = local.core_flag_platform_landing_zone ? 1 : 0
 
   name                = "pe-kv-aiops-tst-${local.region_code}-001"
   location            = azurerm_resource_group.this.location
@@ -42,13 +47,19 @@ resource "azurerm_private_endpoint" "kv" {
 
   private_service_connection {
     name                           = "psc-kv-aiops-tst-${local.region_code}-001"
-    private_connection_resource_id = local.app_gateway_key_vault_resource_id
+    private_connection_resource_id = module.avm_res_keyvault_vault.resource_id
     is_manual_connection           = false
     subresource_names              = ["vault"]
   }
 
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = [azurerm_private_dns_zone.kv[count.index].id]
+    private_dns_zone_ids = [azurerm_private_dns_zone.kv[0].id]
   }
+
+  depends_on = [
+    module.avm_res_keyvault_vault,
+    module.ai_lz_vnet,
+    azurerm_private_dns_zone.kv
+  ]
 }
