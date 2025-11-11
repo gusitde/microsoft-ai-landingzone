@@ -12,7 +12,7 @@ resource "azurerm_role_assignment" "kv_secrets_user" {
   count = local.deploy_app_gateway && local.app_gateway_key_vault_resource_id != null ? 1 : 0
 
   scope                = local.app_gateway_key_vault_resource_id
-  role_definition_name = "Key Vault Secrets User"
+  role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_user_assigned_identity.appgw_uami[count.index].principal_id
 }
 
