@@ -3,14 +3,14 @@
 # Update them as needed to target a different environment.
 #
 # Uncomment and populate the subscription ID if Terraform cannot infer it from your Azure login context.
-subscription_id            = "00064ce-0000-0000-0000-279900000000"
+subscription_id            = "000000-0000-0000-0000-000000000000"
 location                   = "swedencentral"
-project_code               = "aiop"
+project_code               = "aaaa"
 environment_code           = "tst"
 naming_prefix              = "azr" # Change this to replace the default "azr" prefix applied to every generated resource name.
 # To adjust the order of the tokens that make up each name (prefix, project, environment, region, resource, descriptor), edit the
 # `base_parts` list in `modules/naming/main.tf` so the elements are arranged to match your organizational convention.
-resource_group_name        = "rg-aiop-tst-sec-001"
+resource_group_name        = "rg-aaa-tst-sec-001"
 resource_group_version     = 1
 enable_telemetry           = true
 flag_platform_landing_zone = false
