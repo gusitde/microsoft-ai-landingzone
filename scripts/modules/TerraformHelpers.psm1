@@ -1,5 +1,11 @@
 Set-StrictMode -Version Latest
 
+$moduleBase = Split-Path -Parent $PSCommandPath
+$remediationModulePath = Join-Path $moduleBase "AzureRemediation.psm1"
+if (Test-Path $remediationModulePath) {
+    Import-Module $remediationModulePath -Force
+}
+
 function Invoke-TerraformDiagnostics {
     param(
         [Parameter(Mandatory = $true)]
@@ -313,24 +319,51 @@ function Show-TerraformErrorGuidance {
             }
             '2' {
                 Write-Host "`nSolution 2: Use Microsoft Entra ID (Managed Identity) for authentication" -ForegroundColor Green
-                Write-Host ""
-                Write-Host "This is the most secure method. Your identity needs 'Storage Blob Data Contributor' role." -ForegroundColor White
-                Write-Host ""
-                Write-Host "Run these commands:" -ForegroundColor Yellow
-                Write-Host "1. Get your user/principal ID:" -ForegroundColor Cyan
-                Write-Host "   az ad signed-in-user show --query 'id' -o tsv" -ForegroundColor White
-                Write-Host ""
-                Write-Host "2. Get Storage Account ID:" -ForegroundColor Cyan
-                Write-Host "   az storage account show -n <storage-account-name> -g <rg-name> --query 'id' -o tsv" -ForegroundColor White
-                Write-Host ""
-                Write-Host "3. Assign the required role:" -ForegroundColor Cyan
-                Write-Host "   az role assignment create --role 'Storage Blob Data Contributor' --assignee <your-principal-id> --scope <storage-account-id>" -ForegroundColor White
-                Write-Host ""
-                Write-Host "4. Set environment variable for Terraform:" -ForegroundColor Cyan
-                Write-Host "   `$env:ARM_USE_AZUREAD = 'true'" -ForegroundColor White
-                Write-Host ""
-                Write-Host "5. Re-run apply:" -ForegroundColor Cyan
-                Write-Host "   $TerraformExe apply plan.tfplan" -ForegroundColor White
+
+                $subscriptionId = $null
+                if ($errorText -match 'Subscription:\s*"([^"]+)"') {
+                    $subscriptionId = $matches[1]
+                }
+
+                $resourceGroup = $null
+                if ($errorText -match 'Resource Group Name:\s*"([^"]+)"') {
+                    $resourceGroup = $matches[1]
+                }
+
+                $storageAccount = $null
+                if ($errorText -match 'Storage Account Name:\s*"([^"]+)"') {
+                    $storageAccount = $matches[1]
+                }
+
+                if (-not $subscriptionId) {
+                    $subscriptionId = Read-Host "Enter the subscription ID"
+                }
+                if (-not $resourceGroup) {
+                    $resourceGroup = Read-Host "Enter the resource group name"
+                }
+                if (-not $storageAccount) {
+                    $storageAccount = Read-Host "Enter the storage account name"
+                }
+
+                $remediationCommand = Get-Command -Name Invoke-StorageAccountAadRemediation -ErrorAction SilentlyContinue
+                if (-not $remediationCommand) {
+                    Write-Host "✗ Automation module not found. Please update the repository tooling." -ForegroundColor Red
+                    Write-Host ""
+                    Write-Host "Run these commands manually:" -ForegroundColor Yellow
+                    Write-Host "1. az ad signed-in-user show --query 'id' -o tsv" -ForegroundColor White
+                    Write-Host "2. az storage account show -n $storageAccount -g $resourceGroup --query 'id' -o tsv" -ForegroundColor White
+                    Write-Host "3. az role assignment create --role 'Storage Blob Data Contributor' --assignee <principal-id> --scope <storage-account-id>" -ForegroundColor White
+                    Write-Host "4. `$env:ARM_USE_AZUREAD = 'true'" -ForegroundColor White
+                    return $true
+                }
+
+                $remediationResult = Invoke-StorageAccountAadRemediation -SubscriptionId $subscriptionId -ResourceGroupName $resourceGroup -StorageAccountName $storageAccount
+                if ($remediationResult) {
+                    Write-Host "`nRe-run the Terraform step you were performing (plan/apply)." -ForegroundColor Yellow
+                }
+                else {
+                    Write-Host "`n✗ Automated remediation did not complete successfully. Review the messages above and retry." -ForegroundColor Red
+                }
             }
             '3' {
                 Write-Host "`nSolution 3: Two-stage deployment" -ForegroundColor Green

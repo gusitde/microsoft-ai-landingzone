@@ -245,80 +245,110 @@ az network list-usages -l <region> -o table
 .\tools\terraform\terraform.exe plan -detailed-exitcode
 ```
 
-### Step 3.1: Initialize Terraform
+### Step 3.1: Run the interactive startup workflow (recommended)
 
-1. Navigate to the Terraform module directory
-2. Initialize Terraform:
+- Launch the guided runner from the repo root:
+
   ```powershell
-  .\tools\terraform\terraform.exe init
+  pwsh ./scripts/run-terraform-start-up.ps1
   ```
-3. Verify successful initialization (plugins downloaded, backend configured)
 
-### Step 3.2: Format and Validate Code
+- Choose the option that matches your intent:
 
-1. Format Terraform files:
-  ```powershell
-  .\tools\terraform\terraform.exe fmt -recursive
-  ```
-2. Validate configuration:
-  ```powershell
-  .\tools\terraform\terraform.exe validate
-  ```
-3. Review and fix any validation errors
+  - **[1] Plan only** – runs diagnostics, `terraform init`, and `terraform validate`, then emits `plan.tfplan`, `plan.json`, and timestamped plan artifacts without touching Azure resources.
+  - **[2] Plan + Apply** – performs the same checks, pauses for plan review, and applies when you confirm. During the run it can auto-generate an Application Gateway certificate and, if a storage account blocks key-based auth, it calls the new `Invoke-StorageAccountAadRemediation` helper to grant your identity *Storage Blob Data Contributor* and sets `ARM_USE_AZUREAD=true` before retrying.
+  - **[3] Apply existing plan** – validates the workspace and replays the existing `plan.tfplan` after a safety check.
 
-### Step 3.3: Run AVM Pre-Commit Checks
+- All options execute the helper module’s pre-flight diagnostics (state health, backend config, drift check, provider locks) before Terraform runs. If you prefer a manual workflow, continue with Step 3.2.
 
-**CRITICAL:** These checks are mandatory before deployment:
+### Step 3.2: Initialize Terraform (manual path)
+
+Navigate to the Terraform module directory, then initialize Terraform:
 
 ```powershell
-# Windows PowerShell
+.\tools\terraform\terraform.exe init
+```
+
+Verify that the command completes successfully (plugins downloaded, backend configured) before moving on.
+
+### Step 3.3: Format and Validate Code
+
+Run Terraform formatting to normalize HCL across modules:
+
+```powershell
+.\tools\terraform\terraform.exe fmt -recursive
+```
+
+After formatting, validate the configuration:
+
+```powershell
+.\tools\terraform\terraform.exe validate
+```
+
+Resolve any validation errors before continuing.
+
+### Step 3.4: Run AVM pre-commit checks
+
+**CRITICAL:** These checks are mandatory before deployment.
+
+Windows PowerShell:
+
+```powershell
 $env:PORCH_NO_TUI = 1
 ./avm pre-commit
-
-# If changes are made, commit them
 git add .
 git commit -m "chore: avm pre-commit fixes"
 ```
 
+Linux/macOS:
+
 ```bash
-# Linux/macOS
 export PORCH_NO_TUI=1
 ./avm pre-commit
 git add . && git commit -m "chore: avm pre-commit fixes"
 ```
 
-### Step 3.4: Review Terraform Plan
+### Step 3.5: Review the Terraform plan
 
-1. Generate execution plan:
-  ```powershell
-  .\tools\terraform\terraform.exe plan -out=plan.tfplan
-  ```
-2. Review the plan carefully:
-  - Resources to be created
-  - Resources to be modified
-  - Resources to be destroyed (should be none for initial deployment)
-3. Save the plan output for documentation and artifacts:
-  ```powershell
-  # Machine-readable plan JSON for test plan generation
-  .\tools\terraform\terraform.exe show -json plan.tfplan > plan.json
+Generate the execution plan:
 
-  # Archive plan artifacts
-  $ts = Get-Date -Format yyyy-MM-dd_HH-mm-ss
-  .\tools\terraform\terraform.exe show -json plan.tfplan > artifacts\plan_$ts.json
-  .\tools\terraform\terraform.exe show plan.tfplan > artifacts\plan_$ts.txt
-  ```
+```powershell
+.\tools\terraform\terraform.exe plan -out=plan.tfplan
+```
 
-### Step 3.5: Execute Deployment
+Inspect the plan carefully, paying attention to:
 
-1. Apply the Terraform plan:
-  ```powershell
-  .\tools\terraform\terraform.exe apply plan.tfplan
-  ```
-2. Monitor the deployment progress
-3. Note any warnings or errors
-4. Record deployment completion time and status
+- Resources to be created
+- Resources to be modified
+- Resources to be destroyed (should be none for initial deployment)
 
-### Step 3.6: Verify Deployment
+Persist the plan output for documentation and downstream automation:
+
+```powershell
+# Machine-readable plan JSON for test plan generation
+.\tools\terraform\terraform.exe show -json plan.tfplan > plan.json
+
+# Archive plan artifacts
+$ts = Get-Date -Format yyyy-MM-dd_HH-mm-ss
+.\tools\terraform\terraform.exe show -json plan.tfplan > artifacts\plan_$ts.json
+.\tools\terraform\terraform.exe show plan.tfplan > artifacts\plan_$ts.txt
+```
+
+> 💡 **Using the startup workflow?** Options [1] and [2] already create `plan.tfplan`, `plan.json`, and timestamped artifacts under `artifacts/`. Review them here before deciding to apply.
+
+### Step 3.6: Execute the deployment
+
+Apply the plan when you are ready:
+
+```powershell
+.\tools\terraform\terraform.exe apply plan.tfplan
+```
+
+Monitor the progress, note any warnings or errors, and capture the completion time for your deployment log.
+
+> ⚙️ **Interactive workflow note:** Choosing option [2] in `run-terraform-start-up.ps1` runs the apply step automatically after you confirm the plan. If the storage account blocks shared keys, select remediation option **[2]** when prompted—the script calls `Invoke-StorageAccountAadRemediation` to grant Microsoft Entra Data Plane access and sets `ARM_USE_AZUREAD=true` before re-running Terraform.
+
+### Step 3.7: Verify Deployment
 
 1. Check Azure Portal for created resources
 2. Verify resource configurations match requirements
@@ -331,7 +361,7 @@ git add . && git commit -m "chore: avm pre-commit fixes"
   .\tools\terraform\terraform.exe output > deployment-outputs.txt
   ```
 
-### Step 3.7: Document Deployment
+### Step 3.8: Document Deployment
 
 Create a deployment log with:
 - Deployment date and time
@@ -1147,6 +1177,12 @@ Remove-Item .terraform.lock.hcl -ErrorAction SilentlyContinue
 az logout
 ./scripts/azure-login-devicecode.ps1 -TenantId "<tenant-guid>" -SubscriptionId "<subscription-guid>"
 ```
+
+#### Issue: Storage account blocks shared key authentication
+**Solution:**
+- Re-run `scripts/run-terraform-start-up.ps1` and choose option **[2] Plan + Apply**.
+- When the remediation prompt appears, select option **[2]** to let the script execute `Invoke-StorageAccountAadRemediation`, which grants your identity the *Storage Blob Data Contributor* role and exports `ARM_USE_AZUREAD=true` before retrying the plan or apply.
+- If automation is unavailable, manually assign the role with Azure CLI (`az role assignment create --role 'Storage Blob Data Contributor' ...`) and set `ARM_USE_AZUREAD=true` in your shell before re-running Terraform.
 
 #### Issue: Module Version Conflict
 **Solution:**
