@@ -354,6 +354,57 @@ function Invoke-TerraformBackendRemediation {
     }
 }
 
+function Invoke-TerraformImportRemediation {
+    param(
+        [Parameter(Mandatory = $true)][string]$TerraformExe,
+        [string]$ResourceAddress,
+        [string]$ResourceId
+    )
+
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+    Write-Host "║         EXISTING AZURE RESOURCE DETECTED BY TERRAFORM      ║" -ForegroundColor Yellow
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+
+    if (-not $ResourceAddress -or -not $ResourceId) {
+        Write-Host ""
+        Write-Host "⚠ Terraform reported an existing resource, but the address or ID could not be parsed." -ForegroundColor Yellow
+        Write-Host "  Review the error output above and run terraform import manually." -ForegroundColor White
+        return $false
+    }
+
+    Write-Host ""
+    Write-Host "Terraform address : $ResourceAddress" -ForegroundColor Cyan
+    Write-Host "Azure resource ID : $ResourceId" -ForegroundColor Cyan
+
+    Write-Host ""
+    $choice = Read-Host "Run terraform import for this resource now? (yes/no)"
+
+    if ($choice -notin @('yes','y','YES','Y')) {
+        Write-Host "Skipping automated import. Import the resource manually before retrying." -ForegroundColor Yellow
+        return $false
+    }
+
+    Write-Host ""
+    Write-Host "Running: terraform import $ResourceAddress $ResourceId" -ForegroundColor Cyan
+    $importArgs = @('import', $ResourceAddress, $ResourceId)
+    $output = & $TerraformExe @importArgs 2>&1
+    $output | ForEach-Object { Write-Host $_ }
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ""
+        Write-Host "✓ Import completed successfully." -ForegroundColor Green
+        Write-Host "Re-run terraform plan to refresh the desired state before applying." -ForegroundColor Yellow
+        Set-TerraformRemediationAction -Action "retry-plan"
+        return $true
+    }
+
+    Write-Host ""
+    Write-Host "✗ terraform import failed (exit code: $LASTEXITCODE)." -ForegroundColor Red
+    Write-Host "Resolve the issues above and rerun the import." -ForegroundColor Yellow
+    return $false
+}
+
 function Show-TerraformErrorGuidance {
     param(
         [Parameter(Mandatory = $true)]
@@ -371,6 +422,22 @@ function Show-TerraformErrorGuidance {
         Write-Host "║          BACKEND CONFIGURATION CHANGE DETECTED             ║" -ForegroundColor Yellow
         Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
         $null = Invoke-TerraformBackendRemediation -TerraformExe $TerraformExe
+        $guidanceShown = $true
+    }
+
+    if ($errorText -match "already exists - to be managed via Terraform this resource needs to be imported") {
+        $resourceAddress = $null
+        $resourceId = $null
+
+        if ($errorText -match "with ([^,]+),") {
+            $resourceAddress = $matches[1].Trim()
+        }
+
+        if ($errorText -match 'ID "([^"]+)"') {
+            $resourceId = $matches[1]
+        }
+
+        $null = Invoke-TerraformImportRemediation -TerraformExe $TerraformExe -ResourceAddress $resourceAddress -ResourceId $resourceId
         $guidanceShown = $true
     }
 
@@ -862,4 +929,4 @@ function Test-AppGatewayCertificate {
     }
 }
 
-Export-ModuleMember -Function Invoke-TerraformDiagnostics, Show-TerraformErrorGuidance, Test-AppGatewayCertificate, Reset-TerraformRemediationAction, Get-TerraformRemediationAction, Invoke-TerraformBackendRemediation
+Export-ModuleMember -Function Invoke-TerraformDiagnostics, Show-TerraformErrorGuidance, Test-AppGatewayCertificate, Reset-TerraformRemediationAction, Get-TerraformRemediationAction, Invoke-TerraformBackendRemediation, Invoke-TerraformImportRemediation

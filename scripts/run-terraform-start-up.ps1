@@ -63,7 +63,8 @@
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
 
-        $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
+    Reset-TerraformRemediationAction
+    $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
         $destroyApplyOutput | ForEach-Object { Write-Host $_ }
         $exitCode = $LASTEXITCODE
         Write-Host ""
@@ -78,6 +79,18 @@
             Write-Host "✗ Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyApplyOutput -TerraformExe $terraformExe
+
+            $retryAction = Get-TerraformRemediationAction
+
+            if ($retryAction -eq 'retry-plan') {
+                Write-Host "`nDestroy remediation completed. Re-run the destroy flow to continue." -ForegroundColor Yellow
+                exit 1
+            }
+
+            if ($retryAction -eq 'ignore-error') {
+                Write-Host "`nDestroy cancelled per user choice." -ForegroundColor Yellow
+                exit 1
+            }
 
             if (-not $guidanceShown) {
                 Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
@@ -659,38 +672,51 @@ switch ($choice) {
         Write-Host "STEP 4: Create Terraform Plan" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
-        $planOutput = & $terraformExe plan -out "plan.tfplan" 2>&1
-        $planOutput | ForEach-Object { Write-Host $_ }
-        $exitCode = $LASTEXITCODE
-        Write-Host ""
+        while ($true) {
+            Reset-TerraformRemediationAction
 
-        if ($exitCode -eq 0) {
-            # Check for warnings even on success
-            $planOutputText = $planOutput -join "`n"
-            if ($planOutputText -match "Warning:") {
-                Show-TerraformErrorGuidance -ErrorOutput $planOutput -TerraformExe $terraformExe | Out-Null
+            $planOutput = & $terraformExe plan -out "plan.tfplan" 2>&1
+            $planOutput | ForEach-Object { Write-Host $_ }
+            $exitCode = $LASTEXITCODE
+            Write-Host ""
+
+            if ($exitCode -eq 0) {
+                $planOutputText = $planOutput -join "`n"
+                if ($planOutputText -match "Warning:") {
+                    Show-TerraformErrorGuidance -ErrorOutput $planOutput -TerraformExe $terraformExe | Out-Null
+                }
+
+                Write-Host "`n========================================" -ForegroundColor Cyan
+                Write-Host "STEP 5: Export Plan to JSON" -ForegroundColor Cyan
+                Write-Host "========================================" -ForegroundColor Cyan
+                & $terraformExe show -json "plan.tfplan" > "plan.json"
+
+                Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+                Write-Host "║          TERRAFORM PLAN COMPLETE                          ║" -ForegroundColor Green
+                Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+                Write-Host "Plan saved to:      " -NoNewline -ForegroundColor White
+                Write-Host "plan.tfplan" -ForegroundColor Cyan
+                Write-Host "JSON plan saved to: " -NoNewline -ForegroundColor White
+                Write-Host "plan.json" -ForegroundColor Cyan
+                Write-Host "`nTo apply this plan later, run:" -ForegroundColor Yellow
+                Write-Host "  $terraformExe apply plan.tfplan" -ForegroundColor White
+                break
             }
 
-            Write-Host "`n========================================" -ForegroundColor Cyan
-            Write-Host "STEP 5: Export Plan to JSON" -ForegroundColor Cyan
-            Write-Host "========================================" -ForegroundColor Cyan
-            & $terraformExe show -json "plan.tfplan" > "plan.json"
-
-            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-            Write-Host "║          TERRAFORM PLAN COMPLETE                          ║" -ForegroundColor Green
-            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
-            Write-Host "Plan saved to:      " -NoNewline -ForegroundColor White
-            Write-Host "plan.tfplan" -ForegroundColor Cyan
-            Write-Host "JSON plan saved to: " -NoNewline -ForegroundColor White
-            Write-Host "plan.json" -ForegroundColor Cyan
-            Write-Host "`nTo apply this plan later, run:" -ForegroundColor Yellow
-            Write-Host "  $terraformExe apply plan.tfplan" -ForegroundColor White
-        }
-        else {
             Write-Host "✗ Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
 
-            # Analyze errors and show guidance
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $planOutput -TerraformExe $terraformExe
+            $retryAction = Get-TerraformRemediationAction
+
+            if ($retryAction -eq 'retry-plan') {
+                Write-Host "`n↻ Retrying terraform plan after remediation..." -ForegroundColor Cyan
+                continue
+            }
+
+            if ($retryAction -eq 'ignore-error') {
+                Write-Host "`nPlan cancelled per user choice." -ForegroundColor Yellow
+                exit 1
+            }
 
             if (-not $guidanceShown) {
                 Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
@@ -705,16 +731,32 @@ switch ($choice) {
         Write-Host "STEP 4: Create Terraform Plan" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
-        $planOutput2 = & $terraformExe plan -out "plan.tfplan" 2>&1
-        $planOutput2 | ForEach-Object { Write-Host $_ }
-        $exitCode = $LASTEXITCODE
-        Write-Host ""
+        while ($true) {
+            Reset-TerraformRemediationAction
 
-        if ($exitCode -ne 0) {
+            $planOutput2 = & $terraformExe plan -out "plan.tfplan" 2>&1
+            $planOutput2 | ForEach-Object { Write-Host $_ }
+            $exitCode = $LASTEXITCODE
+            Write-Host ""
+
+            if ($exitCode -eq 0) {
+                break
+            }
+
             Write-Host "✗ Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
 
-            # Analyze errors and show guidance
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $planOutput2 -TerraformExe $terraformExe
+            $retryAction = Get-TerraformRemediationAction
+
+            if ($retryAction -eq 'retry-plan') {
+                Write-Host "`n↻ Retrying terraform plan after remediation..." -ForegroundColor Cyan
+                continue
+            }
+
+            if ($retryAction -eq 'ignore-error') {
+                Write-Host "`nPlan cancelled per user choice." -ForegroundColor Yellow
+                exit 1
+            }
 
             if (-not $guidanceShown) {
                 Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
@@ -740,6 +782,7 @@ switch ($choice) {
             Write-Host "STEP 6: Apply Terraform Plan" -ForegroundColor Cyan
             Write-Host "========================================" -ForegroundColor Cyan
             Write-Host ""
+            Reset-TerraformRemediationAction
             $applyOutput = & $terraformExe apply "plan.tfplan" 2>&1
             $applyOutput | ForEach-Object { Write-Host $_ }
             $exitCode = $LASTEXITCODE
@@ -756,6 +799,18 @@ switch ($choice) {
 
                 # Analyze errors and show guidance
                 $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $applyOutput -TerraformExe $terraformExe
+
+                $retryAction = Get-TerraformRemediationAction
+
+                if ($retryAction -eq 'retry-plan') {
+                    Write-Host "`nRemediation complete. Re-run option [1] or [2] to generate a fresh plan." -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if ($retryAction -eq 'ignore-error') {
+                    Write-Host "`nApply cancelled per user choice." -ForegroundColor Yellow
+                    exit 1
+                }
 
                 if (-not $guidanceShown) {
                     Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
@@ -791,6 +846,7 @@ switch ($choice) {
             Write-Host "STEP 4: Apply Terraform Plan" -ForegroundColor Cyan
             Write-Host "========================================" -ForegroundColor Cyan
             Write-Host ""
+            Reset-TerraformRemediationAction
             $applyOutput3 = & $terraformExe apply "plan.tfplan" 2>&1
             $applyOutput3 | ForEach-Object { Write-Host $_ }
             $exitCode = $LASTEXITCODE
@@ -807,6 +863,18 @@ switch ($choice) {
 
                 # Analyze errors and show guidance
                 $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $applyOutput3 -TerraformExe $terraformExe
+
+                $retryAction = Get-TerraformRemediationAction
+
+                if ($retryAction -eq 'retry-plan') {
+                    Write-Host "`nImport completed. Re-run option [1] or [2] to refresh the plan before applying again." -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if ($retryAction -eq 'ignore-error') {
+                    Write-Host "`nApply cancelled per user choice." -ForegroundColor Yellow
+                    exit 1
+                }
 
                 if (-not $guidanceShown) {
                     Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
