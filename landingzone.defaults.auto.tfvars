@@ -3,7 +3,7 @@
 # Update them as needed to target a different environment.
 #
 # Uncomment and populate the subscription ID if Terraform cannot infer it from your Azure login context.
-subscription_id            = "06bfa713-9d6d-44a9-8643-b39e003e136b"
+subscription_id            = null # Provide subscription_id via TF_VAR_subscription_id / ARM_SUBSCRIPTION_ID or update locally.
 location                   = "swedencentral"
 project_code               = "aaaa"
 environment_code           = "tst"
@@ -29,14 +29,19 @@ vnet_definition = {
   }
 }
 
+
+
+
 # No tags are assigned by default. Provide a map like { costcenter = "1234" } if required.
-tags = null
+tags = {
+  test = "test"
+}
 
 # Remove shared access key requirements and use only OAuth authentication
 genai_storage_account_definition = {
-  shared_access_key_enabled       = true
+  shared_access_key_enabled       = false
   default_to_oauth_authentication = true
-  public_network_access_enabled   = false
+  public_network_access_enabled   = true
 }
 
 genai_container_registry_definition = {
@@ -56,6 +61,10 @@ firewall_definition = {
 # Default Application Gateway configuration. Update the IPs/FQDNs or names to align with your workloads.
 app_gateway_definition = {
   deploy = true
+
+  firewall_definition = {
+    deploy = false
+  }
 
   backend_address_pools = {
     default = {
@@ -99,25 +108,15 @@ app_gateway_definition = {
       priority                   = 10
     }
   }
-}
 
-# API Management configuration - enables APIM deployment
-apim_definition = {
-  deploy                        = true
-  publisher_email              = "admin@example.com"
-  publisher_name               = "API Management Admin"
-  sku_root                     = "Developer"
-  sku_capacity                 = 1
-  additional_locations         = null
-  certificate                  = null
-  client_certificate_enabled   = false
-  hostname_configuration       = null
-  min_api_version             = null
-  notification_sender_email    = null
-  protocols                    = null
-  sign_in                      = null
-  sign_up                      = null
-  tags                         = null
-  tenant_access               = null
+  certificate                = null
+  client_certificate_enabled = false
+  hostname_configuration     = null
+  min_api_version            = null
+  notification_sender_email  = null
+  protocols                  = null
+  sign_in                    = null
+  sign_up                    = null
+  tags                       = null
+  tenant_access              = null
 }
-

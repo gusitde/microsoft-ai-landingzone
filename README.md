@@ -110,30 +110,38 @@ The following end-to-end workflow captures the recommended steps for standing up
    Keeping your fork synchronized (`git pull --ff-only`) ensures you receive the latest module wiring, defaults, and bug fixes.
 
 3. **Authenticate with Azure** – Sign in using the Azure CLI (or the authentication approach required by your automation environment):
-   ```bash
-   az login
-   az account set --subscription <subscription-id>
-   ```
-   - If the deployment account is service-principal based, export the ARM provider environment variables (`ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and optionally `ARM_SUBSCRIPTION_ID`).
-   - To persist the subscription ID in a local `.tfvars`, run the helper script:
-     ```bash
-     ./scripts/configure-subscription.sh            # Bash
-     # or
-     pwsh ./scripts/configure-subscription.ps1      # PowerShell
-     ```
-     The script creates `landingzone.subscription.auto.tfvars` (Git ignored) with the subscription identifier so that future `terraform` commands target the correct tenant without re-exporting environment variables.
+
+    ```bash
+    az login
+    az account set --subscription <subscription-id>
+    ```
+
+    - If the deployment account is service-principal based, export the ARM provider environment variables (`ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and optionally `ARM_SUBSCRIPTION_ID`).
+    - To keep subscription context out of source control, export `TF_VAR_subscription_id=<subscription-id>` (or `ARM_SUBSCRIPTION_ID`) in your shell profile; Terraform will read it automatically.
+    - To persist the subscription ID in a local `.tfvars`, run the helper script:
+
+       ```bash
+       ./scripts/configure-subscription.sh            # Bash
+       # or
+       pwsh ./scripts/configure-subscription.ps1      # PowerShell
+       ```
+
+       The script creates `landingzone.subscription.auto.tfvars` (Git ignored) with the subscription identifier so that future `terraform` commands target the correct tenant without re-exporting environment variables.
 
 4. **Configure backend state (recommended)** – Persisting Terraform state in Azure Storage enables collaboration and reliable recovery.
-   ```bash
-   RESOURCE_GROUP="rg-tfstate-$(date +%y%m%d)"
-   STORAGE_ACCOUNT="sttfstate$(date +%y%m%d%H%M)"
-   CONTAINER_NAME="tfstate"
 
-   az group create --name "$RESOURCE_GROUP" --location eastus
-   az storage account create --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --sku Standard_LRS --encryption-services blob
-   az storage container create --name "$CONTAINER_NAME" --account-name "$STORAGE_ACCOUNT"
-   ```
+    ```bash
+    RESOURCE_GROUP="rg-tfstate-$(date +%y%m%d)"
+    STORAGE_ACCOUNT="sttfstate$(date +%y%m%d%H%M)"
+    CONTAINER_NAME="tfstate"
+
+    az group create --name "$RESOURCE_GROUP" --location eastus
+    az storage account create --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --sku Standard_LRS --encryption-services blob
+    az storage container create --name "$CONTAINER_NAME" --account-name "$STORAGE_ACCOUNT"
+    ```
+
    Save the generated resource names and either edit the `backend` block in `terraform.tf` or provide `-backend-config` flags during `terraform init`, for example:
+
    ```bash
    terraform init \
      -backend-config="resource_group_name=$RESOURCE_GROUP" \
@@ -141,9 +149,11 @@ The following end-to-end workflow captures the recommended steps for standing up
      -backend-config="container_name=$CONTAINER_NAME" \
      -backend-config="key=landingzone.tfstate"
    ```
+
    When experimenting locally you can skip this step and allow Terraform to use the default local state file (`terraform.tfstate`).
 
 5. **Customize variables** – Start from `landingzone.defaults.auto.tfvars` and tailor it (or create additional `.tfvars` files) per environment:
+
    ```hcl
    # landingzone.dev.auto.tfvars
    location         = "eastus"
@@ -158,28 +168,35 @@ The following end-to-end workflow captures the recommended steps for standing up
      deploy = false
    }
    ```
+
    - Use separate files such as `landingzone.prod.auto.tfvars` to encode production-ready SKUs and diagnostics.
    - The variable files are merged with `landingzone.subscription.auto.tfvars` so subscription context stays isolated from Git history.
 
 6. **Install providers and modules**
+
    ```bash
    terraform init
    ```
+
    The command downloads the `azurerm`, `azapi`, `azurecaf`, `modtm`, `random`, and `time` providers together with all referenced Azure Verified Modules.
 
 7. **Validate formatting, schema, and plan**
+
    ```bash
    terraform fmt -recursive
    terraform validate
    terraform plan -var-file=landingzone.dev.auto.tfvars -out=landingzone.plan
    ```
+
    - Use multiple `-var-file` flags to layer environment-specific settings (`-var-file=landingzone.defaults.auto.tfvars -var-file=landingzone.dev.auto.tfvars`).
    - Review the plan output carefully to confirm which optional services (Azure Firewall, Bastion, Cosmos DB, Azure AI Foundry, API Management, etc.) are being provisioned.
 
 8. **Apply the plan**
+
    ```bash
    terraform apply landingzone.plan
    ```
+
    Terraform will create the resource group, networking fabric, security controls, platform services, and optional AI workloads defined by your configuration. If you do not need to persist the plan file, run `terraform apply` without `-out` and respond to the confirmation prompt directly.
 
 9. **Post-deployment validation**
@@ -194,5 +211,6 @@ The following end-to-end workflow captures the recommended steps for standing up
 For CI/CD pipelines, replicate steps 3–8 in your automation platform (GitHub Actions, Azure DevOps, etc.), using secure secret storage for sensitive inputs and leveraging `terraform init -backend-config=...` with remote state credentials.
 
 ## Contributing
+
 Contributions are welcome. Please review `CONTRIBUTING.md`, run the AVM validation pipeline (`./avm pre-commit` and `./avm pr-check`), and ensure documentation and examples stay aligned with any code changes.
 

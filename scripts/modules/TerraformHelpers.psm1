@@ -6,6 +6,26 @@ if (Test-Path $remediationModulePath) {
     Import-Module $remediationModulePath -Force
 }
 
+$storageKeyModulePath = Join-Path $moduleBase "StorageKeyRemediation.psm1"
+if (Test-Path $storageKeyModulePath) {
+    Import-Module $storageKeyModulePath -Force
+}
+
+$script:TerraformRemediationAction = $null
+
+function Reset-TerraformRemediationAction {
+    $script:TerraformRemediationAction = $null
+}
+
+function Get-TerraformRemediationAction {
+    return $script:TerraformRemediationAction
+}
+
+function Set-TerraformRemediationAction {
+    param([string]$Action)
+    $script:TerraformRemediationAction = $Action
+}
+
 function Invoke-TerraformDiagnostics {
     param(
         [Parameter(Mandatory = $true)]
@@ -192,6 +212,148 @@ function Invoke-TerraformDiagnostics {
     return $true
 }
 
+function Get-BackendConfigurationFromFile {
+    param([string]$BackendFilePath = "backend.tf")
+
+    if (-not (Test-Path $BackendFilePath)) {
+        return $null
+    }
+
+    $content = Get-Content -Path $BackendFilePath -Raw
+    $fields = @('resource_group_name', 'storage_account_name', 'container_name', 'subscription_id', 'key')
+    $config = [ordered]@{}
+
+    foreach ($field in $fields) {
+        $escapedField = [regex]::Escape($field)
+        $pattern = "$escapedField\s*=\s*""([^""]+)"""
+        $match = [regex]::Match($content, $pattern)
+        if ($match.Success) {
+            $config[$field] = $match.Groups[1].Value
+        }
+    }
+
+    if ($config.Keys.Count -eq 0) {
+        return $null
+    }
+
+    return $config
+}
+
+function Get-BackendConfigurationFromState {
+    param([string]$StateMetadataPath = ".terraform/terraform.tfstate")
+
+    if (-not (Test-Path $StateMetadataPath)) {
+        return $null
+    }
+
+    try {
+        $metadata = Get-Content -Path $StateMetadataPath -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+
+    if (-not $metadata.backend -or -not $metadata.backend.config) {
+        return $null
+    }
+
+    $fields = @('resource_group_name', 'storage_account_name', 'container_name', 'subscription_id', 'key')
+    $config = [ordered]@{}
+
+    foreach ($field in $fields) {
+        $value = $metadata.backend.config.$field
+        if ($value) {
+            $config[$field] = $value
+        }
+    }
+
+    if ($config.Keys.Count -eq 0) {
+        return $null
+    }
+
+    return $config
+}
+
+function Invoke-TerraformBackendRemediation {
+    param(
+        [Parameter(Mandatory = $true)][string]$TerraformExe,
+        [string]$BackendFilePath = "backend.tf"
+    )
+
+    $currentConfig = Get-BackendConfigurationFromFile -BackendFilePath $BackendFilePath
+    $previousConfig = Get-BackendConfigurationFromState
+
+    Write-Host ""
+    Write-Host "Detected backend mismatch. Review the configurations below:" -ForegroundColor Yellow
+
+    if ($previousConfig) {
+        Write-Host "\nPrevious backend (from .terraform/terraform.tfstate):" -ForegroundColor Cyan
+        foreach ($key in $previousConfig.Keys) {
+            Write-Host ("  {0}: {1}" -f $key, $previousConfig[$key]) -ForegroundColor White
+        }
+    }
+    else {
+        Write-Host "\nPrevious backend metadata could not be read." -ForegroundColor Yellow
+    }
+
+    if ($currentConfig) {
+        Write-Host "\nCurrent backend (from $BackendFilePath):" -ForegroundColor Cyan
+        foreach ($key in $currentConfig.Keys) {
+            Write-Host ("  {0}: {1}" -f $key, $currentConfig[$key]) -ForegroundColor White
+        }
+    }
+    else {
+        Write-Host "\nUnable to parse $BackendFilePath. Verify the file format." -ForegroundColor Red
+    }
+
+    while ($true) {
+        Write-Host ""
+        Write-Host "Choose a remediation path:" -ForegroundColor Cyan
+        Write-Host "  [1] Migrate state to the new backend (terraform init -migrate-state)" -ForegroundColor White
+        Write-Host "  [2] Reconfigure the working directory (terraform init -reconfigure)" -ForegroundColor White
+        Write-Host "  [3] Skip automation and handle manually" -ForegroundColor White
+
+        $choice = Read-Host "Your choice (1/2/3)"
+
+        switch ($choice) {
+            '1' {
+                Write-Host "\nRunning terraform init -migrate-state..." -ForegroundColor Cyan
+                $output = & $TerraformExe init -migrate-state 2>&1
+                $output | ForEach-Object { Write-Host $_ }
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "\n✓ State migration succeeded." -ForegroundColor Green
+                    Set-TerraformRemediationAction -Action "retry-init"
+                    return $true
+                }
+
+                Write-Host "\n✗ terraform init -migrate-state failed (exit code: $LASTEXITCODE)." -ForegroundColor Red
+                Write-Host "Review the output above and choose another option." -ForegroundColor Yellow
+            }
+            '2' {
+                Write-Host "\nRunning terraform init -reconfigure..." -ForegroundColor Cyan
+                $output = & $TerraformExe init -reconfigure 2>&1
+                $output | ForEach-Object { Write-Host $_ }
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "\n✓ Reconfiguration succeeded." -ForegroundColor Green
+                    Set-TerraformRemediationAction -Action "retry-init"
+                    return $true
+                }
+
+                Write-Host "\n✗ terraform init -reconfigure failed (exit code: $LASTEXITCODE)." -ForegroundColor Red
+                Write-Host "Review the output above and choose another option." -ForegroundColor Yellow
+            }
+            '3' {
+                Write-Host "\nSkipping automated remediation. Resolve manually and rerun the command." -ForegroundColor Yellow
+                Set-TerraformRemediationAction -Action "ignore-error"
+                return $true
+            }
+            default {
+                Write-Host "\nPlease enter 1, 2, or 3." -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
 function Show-TerraformErrorGuidance {
     param(
         [Parameter(Mandatory = $true)]
@@ -202,6 +364,15 @@ function Show-TerraformErrorGuidance {
 
     $errorText = $ErrorOutput -join "`n"
     $guidanceShown = $false
+
+    if ($errorText -match "Backend configuration changed") {
+        Write-Host ""
+        Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+        Write-Host "║          BACKEND CONFIGURATION CHANGE DETECTED             ║" -ForegroundColor Yellow
+        Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+        $null = Invoke-TerraformBackendRemediation -TerraformExe $TerraformExe
+        $guidanceShown = $true
+    }
 
     if ($errorText -match "WriteOnly Attribute Not Allowed|Write-only attributes are only supported in Terraform 1.11") {
         Write-Host ""
@@ -296,44 +467,80 @@ function Show-TerraformErrorGuidance {
         Write-Host "  This is a good security practice, but requires a specific workflow." -ForegroundColor White
         Write-Host ""
 
-        Write-Host "Choose your remediation path:" -ForegroundColor Cyan
-        Write-Host "  [1] Temporarily enable key auth (less secure, easiest fix)" -ForegroundColor White
-        Write-Host "  [2] Use Microsoft Entra ID for auth (recommended, requires RBAC)" -ForegroundColor White
-        Write-Host "  [3] Use a two-stage deployment (advanced)" -ForegroundColor White
-        Write-Host ""
-        $remediationChoice = Read-Host "Your choice (1/2/3)"
+    Write-Host "Choose your remediation path:" -ForegroundColor Cyan
+    Write-Host "  [1] Temporarily enable key auth (less secure, easiest fix)" -ForegroundColor White
+    Write-Host "  [2] Use Microsoft Entra ID for auth (recommended, requires RBAC)" -ForegroundColor White
+    Write-Host "  [3] Use a two-stage deployment (advanced)" -ForegroundColor White
+    Write-Host "  [4] Delete and recreate the storage account (Azure CLI helper)" -ForegroundColor White
+    Write-Host "  [5] Ignore and handle manually" -ForegroundColor White
+    Write-Host ""
+    $remediationChoice = Read-Host "Your choice (1/2/3/4/5)"
+
+        $subscriptionId = $null
+        if ($errorText -match 'Subscription:\s*"([^"]+)"') {
+            $subscriptionId = $matches[1]
+        }
+
+        $resourceGroup = $null
+        if ($errorText -match 'Resource Group Name:\s*"([^"]+)"') {
+            $resourceGroup = $matches[1]
+        }
+
+        $storageAccount = $null
+        if ($errorText -match 'Storage Account Name:\s*"([^"]+)"') {
+            $storageAccount = $matches[1]
+        }
 
         switch ($remediationChoice) {
             '1' {
                 Write-Host "`nSolution 1: Temporarily enable key-based authentication" -ForegroundColor Green
                 Write-Host ""
-                Write-Host "Run these commands:" -ForegroundColor Yellow
-                Write-Host "1. Enable key auth:" -ForegroundColor Cyan
-                Write-Host "   az storage account update -n <storage-account-name> -g <rg-name> --allow-shared-key-access true" -ForegroundColor White
-                Write-Host ""
-                Write-Host "2. Re-run apply:" -ForegroundColor Cyan
-                Write-Host "   $TerraformExe apply plan.tfplan" -ForegroundColor White
-                Write-Host ""
-                Write-Host "3. (Optional) Disable key auth after apply:" -ForegroundColor Cyan
-                Write-Host "   az storage account update -n <storage-account-name> -g <rg-name> --allow-shared-key-access false" -ForegroundColor White
+                if (-not $subscriptionId) {
+                    $subscriptionId = Read-Host "Enter the subscription ID"
+                }
+                if (-not $resourceGroup) {
+                    $resourceGroup = Read-Host "Enter the resource group name"
+                }
+                if (-not $storageAccount) {
+                    $storageAccount = Read-Host "Enter the storage account name"
+                }
+
+                $keyHelper = Get-Command -Name Enable-StorageAccountSharedKeyAccess -ErrorAction SilentlyContinue
+                if (-not $keyHelper) {
+                    Write-Host "✗ Automation module not found. Please update the repository tooling." -ForegroundColor Red
+                    Write-Host ""
+                    Write-Host "Run these commands manually:" -ForegroundColor Yellow
+                    Write-Host "1. Enable key auth:" -ForegroundColor Cyan
+                    Write-Host "   az storage account update -n $storageAccount -g $resourceGroup --subscription $subscriptionId --allow-shared-key-access true" -ForegroundColor White
+                    Write-Host ""
+                    Write-Host "2. Re-run apply:" -ForegroundColor Cyan
+                    Write-Host "   $TerraformExe apply plan.tfplan" -ForegroundColor White
+                    Write-Host ""
+                    Write-Host "3. (Optional) Disable key auth after apply:" -ForegroundColor Cyan
+                    Write-Host "   az storage account update -n $storageAccount -g $resourceGroup --subscription $subscriptionId --allow-shared-key-access false" -ForegroundColor White
+                }
+                else {
+                    $enableResult = Enable-StorageAccountSharedKeyAccess -SubscriptionId $subscriptionId -ResourceGroupName $resourceGroup -StorageAccountName $storageAccount
+                    if ($enableResult) {
+                        Set-TerraformRemediationAction -Action "retry-plan"
+                        Write-Host "`nRe-run the Terraform step you were performing (plan/apply)." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "`nAutomation did not complete successfully. Use the manual commands below as a fallback." -ForegroundColor Red
+                        Write-Host ""
+                        Write-Host "1. Enable key auth:" -ForegroundColor Cyan
+                        Write-Host "   az storage account update -n $storageAccount -g $resourceGroup --subscription $subscriptionId --allow-shared-key-access true" -ForegroundColor White
+                        Write-Host ""
+                        Write-Host "2. Re-run apply:" -ForegroundColor Cyan
+                        Write-Host "   $TerraformExe apply plan.tfplan" -ForegroundColor White
+                        Write-Host ""
+                        Write-Host "3. (Optional) Disable key auth after apply:" -ForegroundColor Cyan
+                        Write-Host "   az storage account update -n $storageAccount -g $resourceGroup --subscription $subscriptionId --allow-shared-key-access false" -ForegroundColor White
+                    }
+                }
             }
             '2' {
                 Write-Host "`nSolution 2: Use Microsoft Entra ID (Managed Identity) for authentication" -ForegroundColor Green
-
-                $subscriptionId = $null
-                if ($errorText -match 'Subscription:\s*"([^"]+)"') {
-                    $subscriptionId = $matches[1]
-                }
-
-                $resourceGroup = $null
-                if ($errorText -match 'Resource Group Name:\s*"([^"]+)"') {
-                    $resourceGroup = $matches[1]
-                }
-
-                $storageAccount = $null
-                if ($errorText -match 'Storage Account Name:\s*"([^"]+)"') {
-                    $storageAccount = $matches[1]
-                }
 
                 if (-not $subscriptionId) {
                     $subscriptionId = Read-Host "Enter the subscription ID"
@@ -359,6 +566,7 @@ function Show-TerraformErrorGuidance {
 
                 $remediationResult = Invoke-StorageAccountAadRemediation -SubscriptionId $subscriptionId -ResourceGroupName $resourceGroup -StorageAccountName $storageAccount
                 if ($remediationResult) {
+                    Set-TerraformRemediationAction -Action "retry-plan"
                     Write-Host "`nRe-run the Terraform step you were performing (plan/apply)." -ForegroundColor Yellow
                 }
                 else {
@@ -377,7 +585,62 @@ function Show-TerraformErrorGuidance {
                 Write-Host "2. Run the full apply:" -ForegroundColor Cyan
                 Write-Host "   $TerraformExe apply plan.tfplan" -ForegroundColor White
             }
+            '4' {
+                Write-Host "`nSolution 4: Delete and recreate the storage account via helper" -ForegroundColor Green
+
+                if (-not $subscriptionId) {
+                    $subscriptionId = Read-Host "Enter the subscription ID"
+                }
+                if (-not $resourceGroup) {
+                    $resourceGroup = Read-Host "Enter the resource group name"
+                }
+                if (-not $storageAccount) {
+                    $storageAccount = Read-Host "Enter the storage account name"
+                }
+
+                $recreateCommand = Get-Command -Name Invoke-StorageAccountRecreate -ErrorAction SilentlyContinue
+                if (-not $recreateCommand) {
+                    Write-Host "✗ Automation module not found. Please update the repository tooling." -ForegroundColor Red
+                    Write-Host ""
+                    Write-Host "Manual steps:" -ForegroundColor Yellow
+                    Write-Host "  1. az storage account delete -n $storageAccount -g $resourceGroup --subscription $subscriptionId --yes" -ForegroundColor White
+                    Write-Host "  2. az storage account create -n <new-name> -g $resourceGroup --subscription $subscriptionId --location <region> --sku Standard_LRS --kind StorageV2 --https-only true" -ForegroundColor White
+                    Write-Host "  3. az storage account update -n <new-name> -g $resourceGroup --subscription $subscriptionId --allow-shared-key-access false" -ForegroundColor White
+                }
+                else {
+                    $recreateResult = Invoke-StorageAccountRecreate -SubscriptionId $subscriptionId -ResourceGroupName $resourceGroup -StorageAccountName $storageAccount
+                    if ($recreateResult) {
+                        Set-TerraformRemediationAction -Action "retry-plan"
+                        Write-Host "`nStorage account recreated. Re-run the Terraform step you were performing (plan/apply)." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "`n✗ Storage account recreation was cancelled or failed. Review the output above before retrying." -ForegroundColor Red
+                    }
+                }
+            }
+            '5' {
+                Write-Host "`nIgnoring automation for this storage account error. The current Terraform command will exit so you can address it manually." -ForegroundColor Yellow
+                Set-TerraformRemediationAction -Action "ignore-error"
+            }
         }
+        $guidanceShown = $true
+    }
+
+    if ($errorText -match "Cannot apply incomplete plan") {
+        Write-Host ""
+        Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+        Write-Host "║          PLAN IS INCOMPLETE                                 ║" -ForegroundColor Yellow
+        Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "⚠ Terraform could not finish generating the plan, so the saved plan file cannot be applied." -ForegroundColor Yellow
+        Write-Host "  Review the earlier errors in this run to fix the root cause, then regenerate the plan." -ForegroundColor White
+        Write-Host ""
+        Write-Host "Recommended next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Address the error that interrupted 'terraform plan' (see output above)." -ForegroundColor White
+        Write-Host "  2. Re-run the plan: $TerraformExe plan -out=plan.tfplan" -ForegroundColor White
+        Write-Host "  3. Apply the new plan: $TerraformExe apply plan.tfplan" -ForegroundColor White
+        Write-Host ""
+        Write-Host "Using the startup script? Choose option [1] to regenerate the plan, then rerun option [3] (apply existing plan) once it succeeds." -ForegroundColor Yellow
         $guidanceShown = $true
     }
 
@@ -599,4 +862,4 @@ function Test-AppGatewayCertificate {
     }
 }
 
-Export-ModuleMember -Function Invoke-TerraformDiagnostics, Show-TerraformErrorGuidance, Test-AppGatewayCertificate
+Export-ModuleMember -Function Invoke-TerraformDiagnostics, Show-TerraformErrorGuidance, Test-AppGatewayCertificate, Reset-TerraformRemediationAction, Get-TerraformRemediationAction, Invoke-TerraformBackendRemediation

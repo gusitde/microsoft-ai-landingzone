@@ -4,6 +4,87 @@
     Terraform startup script with interactive mode selection and pre-flight diagnostics.
 
 .DESCRIPTION
+    '4' {
+        # Destroy (plan + apply destroy)
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "STEP 4: Create Destroy Plan" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        while ($true) {
+            Reset-TerraformRemediationAction
+
+            $destroyPlanOutput = & $terraformExe plan -destroy -out "destroy.tfplan" 2>&1
+            $destroyPlanOutput | ForEach-Object { Write-Host $_ }
+            $exitCode = $LASTEXITCODE
+            Write-Host ""
+
+            if ($exitCode -eq 0) {
+                & $terraformExe show -json "destroy.tfplan" > "destroy-plan.json"
+                break
+            }
+
+            Write-Host "✗ Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
+
+            $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyPlanOutput -TerraformExe $terraformExe
+            $retryAction = Get-TerraformRemediationAction
+
+            if ($retryAction -eq 'retry-plan') {
+                Write-Host "`n↻ Retrying terraform plan -destroy after remediation..." -ForegroundColor Cyan
+                continue
+            }
+
+            if ($retryAction -eq 'ignore-error') {
+                Write-Host "`nDestroy flow cancelled per user choice." -ForegroundColor Yellow
+                exit 1
+            }
+
+            if (-not $guidanceShown) {
+                Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+            }
+            exit 1
+        }
+
+        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
+        Write-Host "│  DESTROY PLAN COMPLETE                                  │" -ForegroundColor Yellow
+        Write-Host "│                                                         │" -ForegroundColor Yellow
+        Write-Host "│  Review output above and destroy-plan.json             │" -ForegroundColor Yellow
+        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+
+        $confirmDestroy = Read-Host "`nProceed with terraform destroy? (yes/no)"
+
+        if ($confirmDestroy -notin @('yes', 'y', 'YES', 'Y')) {
+            Write-Host "`n✓ Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
+            exit 0
+        }
+
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "STEP 5: Apply Destroy Plan" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
+        $destroyApplyOutput | ForEach-Object { Write-Host $_ }
+        $exitCode = $LASTEXITCODE
+        Write-Host ""
+
+        if ($exitCode -eq 0) {
+            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+            Write-Host "║               TERRAFORM DESTROY COMPLETE                   ║" -ForegroundColor Green
+            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+            Write-Host "✓ Infrastructure destroyed successfully." -ForegroundColor Green
+        }
+        else {
+            Write-Host "✗ Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
+
+            $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyApplyOutput -TerraformExe $terraformExe
+
+            if (-not $guidanceShown) {
+                Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+            }
+            exit 1
+        }
+    }
     Runs Terraform initialization, validation, and optionally plan/apply based on user selection.
     Includes pre-flight checks to detect state conflicts, import requirements, and other issues.
 #>
@@ -155,6 +236,166 @@ function Install-Terraform {
         Write-Host "`nPlease install Terraform manually from: https://www.terraform.io/downloads" -ForegroundColor Yellow
         return $false
     }
+}
+
+function Get-LandingZoneSubscriptionId {
+    param([string]$RepoRoot)
+
+    $envCandidates = @(
+        $env:TF_VAR_subscription_id,
+        $env:ARM_SUBSCRIPTION_ID,
+        $env:AZURE_SUBSCRIPTION_ID
+    )
+
+    foreach ($candidate in $envCandidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate.Trim()
+        }
+    }
+
+    $azCli = Get-Command -Name az -ErrorAction SilentlyContinue
+    if ($azCli) {
+        $subscriptionRaw = & az account show --query "id" -o tsv 2>&1
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($subscriptionRaw)) {
+            return ($subscriptionRaw -join "").Trim()
+        }
+    }
+
+    $tfvarsPath = Join-Path $RepoRoot "landingzone.defaults.auto.tfvars"
+    if (-not (Test-Path $tfvarsPath)) {
+        return $null
+    }
+
+    $content = Get-Content $tfvarsPath -Raw
+    if ($content -match 'subscription_id\s*=\s*"([^"]+)"') {
+        return $matches[1]
+    }
+
+    return $null
+}
+
+function Get-LandingZoneResourceGroupName {
+    param([string]$RepoRoot)
+
+    $tfvarsPath = Join-Path $RepoRoot "landingzone.defaults.auto.tfvars"
+    if (-not (Test-Path $tfvarsPath)) {
+        return $null
+    }
+
+    $content = Get-Content $tfvarsPath -Raw
+    if ($content -match 'resource_group_name\s*=\s*"([^"]+)"') {
+        return $matches[1]
+    }
+
+    return $null
+}
+
+function Invoke-ManualDestroyCleanup {
+    param([string]$RepoRoot)
+
+    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+    Write-Host "║            MANUAL CLEANUP (DESTROY FAILED)                ║" -ForegroundColor Yellow
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+
+    $subscriptionId = Get-LandingZoneSubscriptionId -RepoRoot $RepoRoot
+    $defaultResourceGroup = Get-LandingZoneResourceGroupName -RepoRoot $RepoRoot
+
+    if ($subscriptionId) {
+        Write-Host "Using subscription context: $subscriptionId" -ForegroundColor Cyan
+    }
+
+    if ($defaultResourceGroup) {
+        Write-Host "Detected resource group from defaults: $defaultResourceGroup" -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "Could not auto-detect resource group from defaults." -ForegroundColor Yellow
+    }
+
+    $rgPrompt = if ($defaultResourceGroup) {
+        "Enter resource group to delete [`$defaultResourceGroup`] (leave blank to skip)"
+    }
+    else {
+        "Enter resource group to delete (leave blank to skip)"
+    }
+
+    $resourceGroupInput = Read-Host $rgPrompt
+    $resourceGroup = if ([string]::IsNullOrWhiteSpace($resourceGroupInput)) { $defaultResourceGroup } else { $resourceGroupInput.Trim() }
+
+    if ($resourceGroup) {
+        $confirmRgDelete = Read-Host "Delete Azure resource group '$resourceGroup'? (yes/no)"
+        if ($confirmRgDelete -in @('yes','y','YES','Y')) {
+            $azCli = Get-Command -Name az -ErrorAction SilentlyContinue
+            if ($azCli) {
+                $azArgs = @('group','delete','--name',$resourceGroup,'--yes','--no-wait')
+                if ($subscriptionId) {
+                    $azArgs += @('--subscription',$subscriptionId)
+                }
+                Write-Host "Invoking: az $($azArgs -join ' ')" -ForegroundColor Cyan
+                $deleteOutput = & az @azArgs 2>&1
+                $deleteOutput | ForEach-Object { Write-Host $_ }
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "✓ Azure deletion request submitted (operation runs asynchronously)." -ForegroundColor Green
+                }
+                else {
+                    Write-Host "✗ Azure CLI reported an error while deleting the resource group." -ForegroundColor Red
+                }
+            }
+            else {
+                Write-Host "⚠ Azure CLI not found; skipping resource group deletion." -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host "Skipping Azure resource group deletion." -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "Skipping Azure resource group deletion (no name provided)." -ForegroundColor Yellow
+    }
+
+    $stateArtifacts = @(
+        "terraform.tfstate",
+        "terraform.tfstate.backup",
+        "plan.tfplan",
+        "plan.json",
+        "destroy.tfplan",
+        "destroy-plan.json",
+        "plan_stage1.tfplan"
+    )
+
+    $removedArtifacts = @()
+
+    foreach ($artifact in $stateArtifacts) {
+        $artifactPath = Join-Path $RepoRoot $artifact
+        if (Test-Path $artifactPath) {
+            Remove-Item -Path $artifactPath -Force -ErrorAction SilentlyContinue
+            if (-not (Test-Path $artifactPath)) {
+                $removedArtifacts += $artifact
+            }
+        }
+    }
+
+    $stateDirectories = @('.terraform')
+    foreach ($stateDir in $stateDirectories) {
+        $dirPath = Join-Path $RepoRoot $stateDir
+        if (Test-Path $dirPath) {
+            Remove-Item -Path $dirPath -Recurse -Force -ErrorAction SilentlyContinue
+            if (-not (Test-Path $dirPath)) {
+                $removedArtifacts += $stateDir
+            }
+        }
+    }
+
+    if ($removedArtifacts.Count -gt 0) {
+        Write-Host "Removed local Terraform artifacts:" -ForegroundColor Green
+        foreach ($item in $removedArtifacts) {
+            Write-Host "  • $item" -ForegroundColor White
+        }
+    }
+    else {
+        Write-Host "No local Terraform state artifacts were removed." -ForegroundColor Yellow
+    }
+
+    Write-Host "Manual cleanup complete. Re-run terraform init before the next deployment." -ForegroundColor Yellow
 }
 
 # --- Main Script Body ---
@@ -310,11 +551,12 @@ Write-Host "│                                                         │" -Fo
 Write-Host "│  [1] Plan only (review changes)                         │" -ForegroundColor White
 Write-Host "│  [2] Plan + Apply (review then deploy)                  │" -ForegroundColor White
 Write-Host "│  [3] Apply only (use existing plan.tfplan)              │" -ForegroundColor White
+Write-Host "│  [4] Destroy (plan + apply destroy)                     │" -ForegroundColor White
 Write-Host "│  [Q] Quit                                               │" -ForegroundColor White
 Write-Host "│                                                         │" -ForegroundColor Cyan
 Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
 
-$choice = Read-Host "`nYour choice (1/2/3/Q)"
+$choice = Read-Host "`nYour choice (1/2/3/4/Q)"
 
 if ($choice -eq 'Q' -or $choice -eq 'q') {
     Write-Host "`n✓ Operation cancelled." -ForegroundColor Yellow
@@ -322,7 +564,7 @@ if ($choice -eq 'Q' -or $choice -eq 'q') {
 }
 
 # Validate choice
-if ($choice -notin @('1', '2', '3')) {
+if ($choice -notin @('1', '2', '3', '4')) {
     Write-Host "`n✗ Invalid choice. Exiting." -ForegroundColor Red
     exit 1
 }
@@ -350,18 +592,42 @@ Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "STEP 2: Initialize Terraform" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-& $terraformExe init -upgrade
-$exitCode = $LASTEXITCODE
-Write-Host ""
+Reset-TerraformRemediationAction
+while ($true) {
+    $initOutput = & $terraformExe init -upgrade 2>&1
+    $initOutput | ForEach-Object { Write-Host $_ }
+    $exitCode = $LASTEXITCODE
+    Write-Host ""
 
-if ($exitCode -ne 0) {
+    if ($exitCode -eq 0) {
+        break
+    }
+
     Write-Host "✗ Terraform init failed with exit code: $exitCode" -ForegroundColor Red
     Write-Host "`nCommon causes:" -ForegroundColor Yellow
     Write-Host "  - Backend configuration errors" -ForegroundColor White
     Write-Host "  - Invalid provider versions" -ForegroundColor White
     Write-Host "  - Network connectivity issues" -ForegroundColor White
     Write-Host "  - Missing Azure credentials (run: .\scripts\azure-login-devicecode.ps1)" -ForegroundColor White
-    Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+
+    $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $initOutput -TerraformExe $terraformExe
+    $retryAction = Get-TerraformRemediationAction
+
+    if ($retryAction -eq 'retry-init') {
+        Write-Host "`n↻ Retrying terraform init after remediation..." -ForegroundColor Cyan
+        Reset-TerraformRemediationAction
+        continue
+    }
+
+    if ($retryAction -eq 'ignore-error') {
+        Write-Host "`nInit cancelled per user choice." -ForegroundColor Yellow
+        exit 1
+    }
+
+    if (-not $guidanceShown) {
+        Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+    }
+
     exit 1
 }
 
@@ -550,6 +816,93 @@ switch ($choice) {
         }
         else {
             Write-Host "`n✓ Apply cancelled." -ForegroundColor Yellow
+        }
+    }
+
+    '4' {
+        # Destroy (plan + apply destroy)
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "STEP 4: Create Destroy Plan" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        while ($true) {
+            Reset-TerraformRemediationAction
+
+            $destroyPlanOutput = & $terraformExe plan -destroy -out "destroy.tfplan" 2>&1
+            $destroyPlanOutput | ForEach-Object { Write-Host $_ }
+            $exitCode = $LASTEXITCODE
+            Write-Host ""
+
+            if ($exitCode -eq 0) {
+                & $terraformExe show -json "destroy.tfplan" > "destroy-plan.json"
+                break
+            }
+
+            Write-Host "✗ Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
+
+            $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyPlanOutput -TerraformExe $terraformExe
+            $retryAction = Get-TerraformRemediationAction
+
+            if ($retryAction -eq 'retry-plan') {
+                Write-Host "`n↻ Retrying terraform plan -destroy after remediation..." -ForegroundColor Cyan
+                continue
+            }
+
+            if ($retryAction -eq 'ignore-error') {
+                Write-Host "`nDestroy flow cancelled per user choice." -ForegroundColor Yellow
+                exit 1
+            }
+
+            if (-not $guidanceShown) {
+                Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+            }
+            exit 1
+        }
+
+        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
+        Write-Host "│  DESTROY PLAN COMPLETE                                  │" -ForegroundColor Yellow
+        Write-Host "│                                                         │" -ForegroundColor Yellow
+        Write-Host "│  Review output above and destroy-plan.json             │" -ForegroundColor Yellow
+        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+
+        $confirmDestroy = Read-Host "`nProceed with terraform destroy? (yes/no)"
+
+        if ($confirmDestroy -notin @('yes', 'y', 'YES', 'Y')) {
+            Write-Host "`n✓ Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
+            exit 0
+        }
+
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "STEP 5: Apply Destroy Plan" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
+        $destroyApplyOutput | ForEach-Object { Write-Host $_ }
+        $exitCode = $LASTEXITCODE
+        Write-Host ""
+
+        if ($exitCode -eq 0) {
+            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+            Write-Host "║               TERRAFORM DESTROY COMPLETE                   ║" -ForegroundColor Green
+            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+            Write-Host "✓ Infrastructure destroyed successfully." -ForegroundColor Green
+        }
+        else {
+            Write-Host "✗ Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
+
+            $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyApplyOutput -TerraformExe $terraformExe
+
+            if (-not $guidanceShown) {
+                Write-Host "`nCheck the error messages above for details." -ForegroundColor Yellow
+            }
+
+            $cleanupChoice = Read-Host "`nRun manual cleanup to delete the resource group and local Terraform state files? (yes/no)"
+            if ($cleanupChoice -in @('yes','y','YES','Y')) {
+                Invoke-ManualDestroyCleanup -RepoRoot $repoRoot
+            }
+            exit 1
         }
     }
 }
