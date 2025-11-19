@@ -373,6 +373,9 @@ function Invoke-TerraformImportRemediation {
         return $false
     }
 
+    $ResourceAddress = $ResourceAddress.Trim()
+    $ResourceId = $ResourceId.Trim()
+
     Write-Host ""
     Write-Host "Terraform address : $ResourceAddress" -ForegroundColor Cyan
     Write-Host "Azure resource ID : $ResourceId" -ForegroundColor Cyan
@@ -414,9 +417,10 @@ function Show-TerraformErrorGuidance {
     )
 
     $errorText = $ErrorOutput -join "`n"
+    $plainErrorText = [regex]::Replace($errorText, "\x1B\[[0-9;]*[A-Za-z]", "")
     $guidanceShown = $false
 
-    if ($errorText -match "Backend configuration changed") {
+    if ($plainErrorText -match "Backend configuration changed") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          BACKEND CONFIGURATION CHANGE DETECTED             ║" -ForegroundColor Yellow
@@ -425,15 +429,18 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "already exists - to be managed via Terraform this resource needs to be imported") {
+    if ($plainErrorText -match "already exists - to be managed via Terraform this resource needs to be imported") {
         $resourceAddress = $null
         $resourceId = $null
 
-        if ($errorText -match "with ([^,]+),") {
+        if ($plainErrorText -match "with\s+([^,`n]+)") {
             $resourceAddress = $matches[1].Trim()
+            if ($resourceAddress -and $resourceAddress -notmatch '^[A-Za-z0-9_.\[\]"-]+$') {
+                $resourceAddress = $null
+            }
         }
 
-        if ($errorText -match 'ID "([^"]+)"') {
+        if ($plainErrorText -match 'ID "([^"]+)"') {
             $resourceId = $matches[1]
         }
 
@@ -441,7 +448,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "WriteOnly Attribute Not Allowed|Write-only attributes are only supported in Terraform 1.11") {
+    if ($plainErrorText -match "WriteOnly Attribute Not Allowed|Write-only attributes are only supported in Terraform 1.11") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Red
         Write-Host "║          TERRAFORM VERSION INCOMPATIBILITY DETECTED        ║" -ForegroundColor Red
@@ -463,7 +470,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Invalid count argument|count value depends on resource attributes that cannot be determined until apply") {
+    if ($plainErrorText -match "Invalid count argument|count value depends on resource attributes that cannot be determined until apply") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          INVALID COUNT DEPENDENCY DETECTED                 ║" -ForegroundColor Yellow
@@ -472,7 +479,7 @@ function Show-TerraformErrorGuidance {
         Write-Host "⚠ A 'count' meta-argument depends on a resource that hasn't been created yet" -ForegroundColor Yellow
         Write-Host ""
 
-        if ($errorText -match "on (module\.[^ ]+)") {
+    if ($plainErrorText -match "on (module\.[^ ]+)") {
             Write-Host "Affected resource: $($matches[1])" -ForegroundColor Cyan
         }
 
@@ -491,7 +498,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "ApplicationGatewayKeyVaultSecretAccessDenied|Access denied for KeyVault Secret") {
+    if ($plainErrorText -match "ApplicationGatewayKeyVaultSecretAccessDenied|Access denied for KeyVault Secret") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║   APPLICATION GATEWAY KEY VAULT ACCESS DENIED DETECTED     ║" -ForegroundColor Yellow
@@ -524,7 +531,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Key based authentication is not permitted|KeyBasedAuthenticationNotPermitted") {
+    if ($plainErrorText -match "Key based authentication is not permitted|KeyBasedAuthenticationNotPermitted") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║   STORAGE ACCOUNT KEY AUTHENTICATION DISABLED DETECTED     ║" -ForegroundColor Yellow
@@ -544,17 +551,17 @@ function Show-TerraformErrorGuidance {
     $remediationChoice = Read-Host "Your choice (1/2/3/4/5)"
 
         $subscriptionId = $null
-        if ($errorText -match 'Subscription:\s*"([^"]+)"') {
+    if ($plainErrorText -match 'Subscription:\s*"([^"]+)"') {
             $subscriptionId = $matches[1]
         }
 
         $resourceGroup = $null
-        if ($errorText -match 'Resource Group Name:\s*"([^"]+)"') {
+    if ($plainErrorText -match 'Resource Group Name:\s*"([^"]+)"') {
             $resourceGroup = $matches[1]
         }
 
         $storageAccount = $null
-        if ($errorText -match 'Storage Account Name:\s*"([^"]+)"') {
+    if ($plainErrorText -match 'Storage Account Name:\s*"([^"]+)"') {
             $storageAccount = $matches[1]
         }
 
@@ -693,7 +700,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Cannot apply incomplete plan") {
+    if ($plainErrorText -match "Cannot apply incomplete plan") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          PLAN IS INCOMPLETE                                 ║" -ForegroundColor Yellow
@@ -711,7 +718,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Missing Resource Identity After Create|unexpectedly returned no resource identity") {
+    if ($plainErrorText -match "Missing Resource Identity After Create|unexpectedly returned no resource identity") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          MISSING RESOURCE IDENTITY DETECTED                ║" -ForegroundColor Yellow
@@ -741,7 +748,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Saved plan is stale|plan file can no longer be applied|state was changed by another operation") {
+    if ($plainErrorText -match "Saved plan is stale|plan file can no longer be applied|state was changed by another operation") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          SAVED PLAN IS STALE                               ║" -ForegroundColor Yellow
@@ -781,7 +788,7 @@ function Show-TerraformErrorGuidance {
         $guidanceShown = $true
     }
 
-    if ($errorText -match "Warning: Argument is deprecated|has been deprecated in favor of") {
+    if ($plainErrorText -match "Warning: Argument is deprecated|has been deprecated in favor of") {
         Write-Host ""
         Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
         Write-Host "║          DEPRECATION WARNINGS DETECTED                     ║" -ForegroundColor Yellow
@@ -790,7 +797,7 @@ function Show-TerraformErrorGuidance {
         Write-Host "ℹ These are warnings, not errors - deployment can continue" -ForegroundColor Cyan
         Write-Host ""
 
-        if ($errorText -match "metric.*has been deprecated in favor of.*enabled_metric") {
+    if ($plainErrorText -match "metric.*has been deprecated in favor of.*enabled_metric") {
             Write-Host "Deprecation: 'metric' property in azurerm_monitor_diagnostic_setting" -ForegroundColor White
             Write-Host "  Old: metric { ... }" -ForegroundColor Red
             Write-Host "  New: enabled_metric { ... }" -ForegroundColor Green

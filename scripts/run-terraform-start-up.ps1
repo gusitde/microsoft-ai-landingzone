@@ -24,13 +24,13 @@
                 break
             }
 
-            Write-Host "✗ Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyPlanOutput -TerraformExe $terraformExe
             $retryAction = Get-TerraformRemediationAction
 
             if ($retryAction -eq 'retry-plan') {
-                Write-Host "`n↻ Retrying terraform plan -destroy after remediation..." -ForegroundColor Cyan
+                Write-Host "`n[RETRY] Running terraform plan -destroy again after remediation..." -ForegroundColor Cyan
                 continue
             }
 
@@ -45,16 +45,15 @@
             exit 1
         }
 
-        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-        Write-Host "│  DESTROY PLAN COMPLETE                                  │" -ForegroundColor Yellow
-        Write-Host "│                                                         │" -ForegroundColor Yellow
-        Write-Host "│  Review output above and destroy-plan.json             │" -ForegroundColor Yellow
-        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host "`n---------------------------------------------------------" -ForegroundColor Yellow
+    Write-Host "DESTROY PLAN COMPLETE" -ForegroundColor Yellow
+    Write-Host "Review output above and destroy-plan.json" -ForegroundColor Yellow
+    Write-Host "---------------------------------------------------------" -ForegroundColor Yellow
 
         $confirmDestroy = Read-Host "`nProceed with terraform destroy? (yes/no)"
 
         if ($confirmDestroy -notin @('yes', 'y', 'YES', 'Y')) {
-            Write-Host "`n✓ Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
+            Write-Host "`n[INFO] Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
             exit 0
         }
 
@@ -63,20 +62,20 @@
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
 
-    Reset-TerraformRemediationAction
-    $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
+        Reset-TerraformRemediationAction
+        $destroyApplyOutput = & $terraformExe apply "destroy.tfplan" 2>&1
         $destroyApplyOutput | ForEach-Object { Write-Host $_ }
         $exitCode = $LASTEXITCODE
         Write-Host ""
 
         if ($exitCode -eq 0) {
-            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-            Write-Host "║               TERRAFORM DESTROY COMPLETE                   ║" -ForegroundColor Green
-            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
-            Write-Host "✓ Infrastructure destroyed successfully." -ForegroundColor Green
+            Write-Host "`n============================================================" -ForegroundColor Green
+            Write-Host "TERRAFORM DESTROY COMPLETE" -ForegroundColor Green
+            Write-Host "============================================================`n" -ForegroundColor Green
+            Write-Host "[OK] Infrastructure destroyed successfully." -ForegroundColor Green
         }
         else {
-            Write-Host "✗ Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyApplyOutput -TerraformExe $terraformExe
 
@@ -108,7 +107,7 @@ $helpersModulePath = Join-Path $scriptPath "modules/TerraformHelpers.psm1"
 if (Test-Path $helpersModulePath) {
     Import-Module $helpersModulePath -Force
 } else {
-    Write-Host "✗ Required module not found: $helpersModulePath" -ForegroundColor Red
+    Write-Host "[ERROR] Required module not found: $helpersModulePath" -ForegroundColor Red
     Write-Host "Please ensure TerraformHelpers.psm1 exists in scripts/modules." -ForegroundColor Yellow
     exit 1
 }
@@ -180,9 +179,9 @@ function Install-Terraform {
         [string]$Version = "1.11.0"
     )
 
-    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "║       TERRAFORM NOT FOUND - AUTOMATIC INSTALLATION         ║" -ForegroundColor Yellow
-    Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Yellow
+    Write-Host "`n============================================================" -ForegroundColor Yellow
+    Write-Host "TERRAFORM NOT FOUND - AUTOMATIC INSTALLATION" -ForegroundColor Yellow
+    Write-Host "============================================================`n" -ForegroundColor Yellow
 
     Write-Host "No full Terraform binary detected. Would you like to download it now?" -ForegroundColor Cyan
     Write-Host "  Version: $Version" -ForegroundColor White
@@ -192,7 +191,7 @@ function Install-Terraform {
     $confirm = Read-Host "Download and install Terraform? (yes/no)"
 
     if ($confirm -ne 'yes' -and $confirm -ne 'y' -and $confirm -ne 'YES' -and $confirm -ne 'Y') {
-        Write-Host "`n✗ Installation cancelled." -ForegroundColor Red
+    Write-Host "`n[CANCELLED] Installation cancelled." -ForegroundColor Red
         Write-Host "`nTo proceed, you need to:" -ForegroundColor Yellow
         Write-Host "  1. Download Terraform from: https://www.terraform.io/downloads" -ForegroundColor White
         Write-Host "  2. Install it globally OR place terraform.exe in your PATH" -ForegroundColor White
@@ -207,7 +206,7 @@ function Install-Terraform {
         $zipPath = Join-Path $env:TEMP "terraform_${Version}.zip"
 
         Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
-        Write-Host "  ✓ Download complete" -ForegroundColor Green
+    Write-Host "  [OK] Download complete" -ForegroundColor Green
 
         Write-Host "`n[2/3] Extracting Terraform..." -ForegroundColor Cyan
         $extractDir = Split-Path -Parent $InstallPath
@@ -219,17 +218,17 @@ function Install-Terraform {
 
         # Extract (this will create terraform.exe in the tools directory)
         Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
-        Write-Host "  ✓ Extraction complete" -ForegroundColor Green
+    Write-Host "  [OK] Extraction complete" -ForegroundColor Green
 
         Write-Host "`n[3/3] Cleaning up..." -ForegroundColor Cyan
         Remove-Item $zipPath -Force
-        Write-Host "  ✓ Cleanup complete" -ForegroundColor Green
+    Write-Host "  [OK] Cleanup complete" -ForegroundColor Green
 
         # Verify installation
         if (Test-Path $InstallPath) {
-            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-            Write-Host "║       TERRAFORM INSTALLATION SUCCESSFUL                   ║" -ForegroundColor Green
-            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+            Write-Host "`n============================================================" -ForegroundColor Green
+            Write-Host "TERRAFORM INSTALLATION SUCCESSFUL" -ForegroundColor Green
+            Write-Host "============================================================`n" -ForegroundColor Green
 
             $versionOutput = & $InstallPath -version 2>&1 | Select-Object -First 1
             Write-Host "Installed: $versionOutput" -ForegroundColor White
@@ -240,12 +239,12 @@ function Install-Terraform {
             return $true
         }
         else {
-            Write-Host "`n✗ Installation verification failed - terraform.exe not found at expected location" -ForegroundColor Red
+            Write-Host "`n[ERROR] Installation verification failed - terraform.exe not found at expected location" -ForegroundColor Red
             return $false
         }
     }
     catch {
-        Write-Host "`n✗ Installation failed: $_" -ForegroundColor Red
+    Write-Host "`n[ERROR] Installation failed: $_" -ForegroundColor Red
         Write-Host "`nPlease install Terraform manually from: https://www.terraform.io/downloads" -ForegroundColor Yellow
         return $false
     }
@@ -306,9 +305,9 @@ function Get-LandingZoneResourceGroupName {
 function Invoke-ManualDestroyCleanup {
     param([string]$RepoRoot)
 
-    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "║            MANUAL CLEANUP (DESTROY FAILED)                ║" -ForegroundColor Yellow
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+    Write-Host "`n============================================================" -ForegroundColor Yellow
+    Write-Host "MANUAL CLEANUP (DESTROY FAILED)" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Yellow
 
     $subscriptionId = Get-LandingZoneSubscriptionId -RepoRoot $RepoRoot
     $defaultResourceGroup = Get-LandingZoneResourceGroupName -RepoRoot $RepoRoot
@@ -347,10 +346,10 @@ function Invoke-ManualDestroyCleanup {
                 $deleteOutput = & az @azArgs 2>&1
                 $deleteOutput | ForEach-Object { Write-Host $_ }
                 if ($LASTEXITCODE -eq 0) {
-                    Write-Host "✓ Azure deletion request submitted (operation runs asynchronously)." -ForegroundColor Green
+                    Write-Host "[OK] Azure deletion request submitted (operation runs asynchronously)." -ForegroundColor Green
                 }
                 else {
-                    Write-Host "✗ Azure CLI reported an error while deleting the resource group." -ForegroundColor Red
+                    Write-Host "[ERROR] Azure CLI reported an error while deleting the resource group." -ForegroundColor Red
                 }
             }
             else {
@@ -401,7 +400,7 @@ function Invoke-ManualDestroyCleanup {
     if ($removedArtifacts.Count -gt 0) {
         Write-Host "Removed local Terraform artifacts:" -ForegroundColor Green
         foreach ($item in $removedArtifacts) {
-            Write-Host "  • $item" -ForegroundColor White
+            Write-Host "  - $item" -ForegroundColor White
         }
     }
     else {
@@ -418,9 +417,9 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptPath
 Set-Location $repoRoot
 
-Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║          TERRAFORM DEPLOYMENT WORKFLOW                    ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+Write-Host "`n============================================================" -ForegroundColor Cyan
+Write-Host "TERRAFORM DEPLOYMENT WORKFLOW" -ForegroundColor Cyan
+Write-Host "============================================================`n" -ForegroundColor Cyan
 
 Write-Host "Working directory: $repoRoot" -ForegroundColor Gray
 Write-Host ""
@@ -480,10 +479,10 @@ if (-not $terraformExe) {
 
         if ($installed) {
             $terraformExe = $installPath
-            Write-Host "`n✓ Ready to proceed with Terraform operations!" -ForegroundColor Green
+            Write-Host "`n[OK] Ready to proceed with Terraform operations!" -ForegroundColor Green
         }
         else {
-            Write-Host "`n✗ Cannot proceed without Terraform." -ForegroundColor Red
+            Write-Host "`n[ERROR] Cannot proceed without Terraform." -ForegroundColor Red
             exit 1
         }
     }
@@ -495,9 +494,9 @@ $versionCheck = Test-TerraformVersionCompatibility -TerraformExe $terraformExe -
 
 if ($versionCheck.Compatible -eq $false) {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Red
-    Write-Host "║          TERRAFORM VERSION INCOMPATIBILITY DETECTED        ║" -ForegroundColor Red
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host "TERRAFORM VERSION INCOMPATIBILITY DETECTED" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Red
     Write-Host ""
     Write-Host "⚠ Your Terraform version is too old for this project" -ForegroundColor Yellow
     Write-Host ""
@@ -530,17 +529,17 @@ if ($versionCheck.Compatible -eq $false) {
         if ($installed) {
             $terraformExe = $installPath
             Write-Host ""
-            Write-Host "✓ Terraform upgraded successfully! Continuing with deployment..." -ForegroundColor Green
+            Write-Host "[OK] Terraform upgraded successfully! Continuing with deployment..." -ForegroundColor Green
         }
         else {
             Write-Host ""
-            Write-Host "✗ Upgrade failed. Cannot proceed with incompatible version." -ForegroundColor Red
+            Write-Host "[ERROR] Upgrade failed. Cannot proceed with incompatible version." -ForegroundColor Red
             exit 1
         }
     }
     else {
         Write-Host ""
-        Write-Host "✗ Cannot proceed with Terraform v$($versionCheck.Current)" -ForegroundColor Red
+    Write-Host "[ERROR] Cannot proceed with Terraform v$($versionCheck.Current)" -ForegroundColor Red
         Write-Host ""
         Write-Host "To manually upgrade:" -ForegroundColor Yellow
         Write-Host "  1. Download from: https://releases.hashicorp.com/terraform/1.11.0/" -ForegroundColor White
@@ -549,7 +548,7 @@ if ($versionCheck.Compatible -eq $false) {
     }
 }
 elseif ($versionCheck.Compatible -eq $true) {
-    Write-Host "✓ Terraform version $($versionCheck.Current) is compatible (>= $($versionCheck.Required))" -ForegroundColor Green
+    Write-Host "[OK] Terraform version $($versionCheck.Current) is compatible (>= $($versionCheck.Required))" -ForegroundColor Green
 }
 
 # Check for Application Gateway certificate requirements
@@ -558,27 +557,25 @@ if (-not (Test-AppGatewayCertificate -RepoRoot $repoRoot)) {
 }
 
 # Ask user what they want to do
-Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
-Write-Host "│  What would you like to do?                             │" -ForegroundColor Cyan
-Write-Host "│                                                         │" -ForegroundColor Cyan
-Write-Host "│  [1] Plan only (review changes)                         │" -ForegroundColor White
-Write-Host "│  [2] Plan + Apply (review then deploy)                  │" -ForegroundColor White
-Write-Host "│  [3] Apply only (use existing plan.tfplan)              │" -ForegroundColor White
-Write-Host "│  [4] Destroy (plan + apply destroy)                     │" -ForegroundColor White
-Write-Host "│  [Q] Quit                                               │" -ForegroundColor White
-Write-Host "│                                                         │" -ForegroundColor Cyan
-Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+Write-Host "`n============================================================" -ForegroundColor Cyan
+Write-Host "What would you like to do?" -ForegroundColor Cyan
+Write-Host "  [1] Plan only (review changes)" -ForegroundColor White
+Write-Host "  [2] Plan + Apply (review then deploy)" -ForegroundColor White
+Write-Host "  [3] Apply only (use existing plan.tfplan)" -ForegroundColor White
+Write-Host "  [4] Destroy (plan + apply destroy)" -ForegroundColor White
+Write-Host "  [Q] Quit" -ForegroundColor White
+Write-Host "============================================================" -ForegroundColor Cyan
 
 $choice = Read-Host "`nYour choice (1/2/3/4/Q)"
 
 if ($choice -eq 'Q' -or $choice -eq 'q') {
-    Write-Host "`n✓ Operation cancelled." -ForegroundColor Yellow
+    Write-Host "`n[INFO] Operation cancelled." -ForegroundColor Yellow
     exit 0
 }
 
 # Validate choice
 if ($choice -notin @('1', '2', '3', '4')) {
-    Write-Host "`n✗ Invalid choice. Exiting." -ForegroundColor Red
+    Write-Host "`n[ERROR] Invalid choice. Exiting." -ForegroundColor Red
     exit 1
 }
 
@@ -597,7 +594,7 @@ $exitCode = $LASTEXITCODE
 Write-Host ""
 
 if ($exitCode -ne 0) {
-    Write-Host "✗ Failed to get Terraform version (exit code: $exitCode)" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to get Terraform version (exit code: $exitCode)" -ForegroundColor Red
     exit 1
 }
 
@@ -616,7 +613,7 @@ while ($true) {
         break
     }
 
-    Write-Host "✗ Terraform init failed with exit code: $exitCode" -ForegroundColor Red
+    Write-Host "[ERROR] Terraform init failed with exit code: $exitCode" -ForegroundColor Red
     Write-Host "`nCommon causes:" -ForegroundColor Yellow
     Write-Host "  - Backend configuration errors" -ForegroundColor White
     Write-Host "  - Invalid provider versions" -ForegroundColor White
@@ -627,7 +624,7 @@ while ($true) {
     $retryAction = Get-TerraformRemediationAction
 
     if ($retryAction -eq 'retry-init') {
-        Write-Host "`n↻ Retrying terraform init after remediation..." -ForegroundColor Cyan
+        Write-Host "`n[RETRY] Running terraform init again after remediation..." -ForegroundColor Cyan
         Reset-TerraformRemediationAction
         continue
     }
@@ -653,7 +650,7 @@ $exitCode = $LASTEXITCODE
 Write-Host ""
 
 if ($exitCode -ne 0) {
-    Write-Host "✗ Terraform validation failed with exit code: $exitCode" -ForegroundColor Red
+    Write-Host "[ERROR] Terraform validation failed with exit code: $exitCode" -ForegroundColor Red
     Write-Host "`nCommon causes:" -ForegroundColor Yellow
     Write-Host "  - Syntax errors in .tf files" -ForegroundColor White
     Write-Host "  - Missing required variables" -ForegroundColor White
@@ -662,7 +659,7 @@ if ($exitCode -ne 0) {
     exit 1
 }
 
-Write-Host "✓ Validation successful!" -ForegroundColor Green
+Write-Host "[OK] Validation successful!" -ForegroundColor Green
 
 # Execute based on user choice
 switch ($choice) {
@@ -691,9 +688,9 @@ switch ($choice) {
                 Write-Host "========================================" -ForegroundColor Cyan
                 & $terraformExe show -json "plan.tfplan" > "plan.json"
 
-                Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-                Write-Host "║          TERRAFORM PLAN COMPLETE                          ║" -ForegroundColor Green
-                Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+                Write-Host "`n============================================================" -ForegroundColor Green
+                Write-Host "TERRAFORM PLAN COMPLETE" -ForegroundColor Green
+                Write-Host "============================================================`n" -ForegroundColor Green
                 Write-Host "Plan saved to:      " -NoNewline -ForegroundColor White
                 Write-Host "plan.tfplan" -ForegroundColor Cyan
                 Write-Host "JSON plan saved to: " -NoNewline -ForegroundColor White
@@ -703,13 +700,13 @@ switch ($choice) {
                 break
             }
 
-            Write-Host "✗ Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $planOutput -TerraformExe $terraformExe
             $retryAction = Get-TerraformRemediationAction
 
             if ($retryAction -eq 'retry-plan') {
-                Write-Host "`n↻ Retrying terraform plan after remediation..." -ForegroundColor Cyan
+                Write-Host "`n[RETRY] Running terraform plan again after remediation..." -ForegroundColor Cyan
                 continue
             }
 
@@ -743,13 +740,13 @@ switch ($choice) {
                 break
             }
 
-            Write-Host "✗ Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform plan failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $planOutput2 -TerraformExe $terraformExe
             $retryAction = Get-TerraformRemediationAction
 
             if ($retryAction -eq 'retry-plan') {
-                Write-Host "`n↻ Retrying terraform plan after remediation..." -ForegroundColor Cyan
+                Write-Host "`n[RETRY] Running terraform plan again after remediation..." -ForegroundColor Cyan
                 continue
             }
 
@@ -769,11 +766,10 @@ switch ($choice) {
         Write-Host "========================================" -ForegroundColor Cyan
         & $terraformExe show -json "plan.tfplan" > "plan.json"
 
-        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-        Write-Host "│  REVIEW THE PLAN ABOVE                                  │" -ForegroundColor Yellow
-        Write-Host "│                                                         │" -ForegroundColor Yellow
-        Write-Host "│  Ready to apply these changes?                          │" -ForegroundColor Yellow
-        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host "`n---------------------------------------------------------" -ForegroundColor Yellow
+    Write-Host "REVIEW THE PLAN ABOVE" -ForegroundColor Yellow
+    Write-Host "Ready to apply these changes?" -ForegroundColor Yellow
+    Write-Host "---------------------------------------------------------" -ForegroundColor Yellow
 
         $confirm = Read-Host "`nProceed with apply? (yes/no)"
 
@@ -789,13 +785,13 @@ switch ($choice) {
             Write-Host ""
 
             if ($exitCode -eq 0) {
-                Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-                Write-Host "║          TERRAFORM APPLY COMPLETE                         ║" -ForegroundColor Green
-                Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
-                Write-Host "✓ Infrastructure deployed successfully!" -ForegroundColor Green
+                Write-Host "`n============================================================" -ForegroundColor Green
+                Write-Host "TERRAFORM APPLY COMPLETE" -ForegroundColor Green
+                Write-Host "============================================================`n" -ForegroundColor Green
+                Write-Host "[OK] Infrastructure deployed successfully!" -ForegroundColor Green
             }
             else {
-                Write-Host "✗ Terraform apply failed with exit code: $exitCode" -ForegroundColor Red
+                Write-Host "[ERROR] Terraform apply failed with exit code: $exitCode" -ForegroundColor Red
 
                 # Analyze errors and show guidance
                 $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $applyOutput -TerraformExe $terraformExe
@@ -821,23 +817,22 @@ switch ($choice) {
             }
         }
         else {
-            Write-Host "`n✓ Apply cancelled. Plan saved for later use." -ForegroundColor Yellow
+            Write-Host "`n[INFO] Apply cancelled. Plan saved for later use." -ForegroundColor Yellow
         }
     }
 
     '3' {
         # Apply only (existing plan)
         if (-not (Test-Path "plan.tfplan")) {
-            Write-Host "`n✗ ERROR: plan.tfplan not found!" -ForegroundColor Red
+            Write-Host "`n[ERROR] plan.tfplan not found!" -ForegroundColor Red
             Write-Host "Please run option [1] or [2] first to create a plan." -ForegroundColor Yellow
             exit 1
         }
 
-        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-        Write-Host "│  APPLY EXISTING PLAN                                    │" -ForegroundColor Yellow
-        Write-Host "│                                                         │" -ForegroundColor Yellow
-        Write-Host "│  This will apply the existing plan.tfplan file          │" -ForegroundColor Yellow
-        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host "`n-----------------------------------------------------------" -ForegroundColor Yellow
+    Write-Host "APPLY EXISTING PLAN" -ForegroundColor Yellow
+    Write-Host "This will apply the existing plan.tfplan file" -ForegroundColor Yellow
+    Write-Host "-----------------------------------------------------------" -ForegroundColor Yellow
 
         $confirm = Read-Host "`nProceed with apply? (yes/no)"
 
@@ -853,13 +848,13 @@ switch ($choice) {
             Write-Host ""
 
             if ($exitCode -eq 0) {
-                Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-                Write-Host "║          TERRAFORM APPLY COMPLETE                         ║" -ForegroundColor Green
-                Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
-                Write-Host "✓ Infrastructure deployed successfully!" -ForegroundColor Green
+                Write-Host "`n============================================================" -ForegroundColor Green
+                Write-Host "TERRAFORM APPLY COMPLETE" -ForegroundColor Green
+                Write-Host "============================================================`n" -ForegroundColor Green
+                Write-Host "[OK] Infrastructure deployed successfully!" -ForegroundColor Green
             }
             else {
-                Write-Host "✗ Terraform apply failed with exit code: $exitCode" -ForegroundColor Red
+                Write-Host "[ERROR] Terraform apply failed with exit code: $exitCode" -ForegroundColor Red
 
                 # Analyze errors and show guidance
                 $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $applyOutput3 -TerraformExe $terraformExe
@@ -883,7 +878,7 @@ switch ($choice) {
             }
         }
         else {
-            Write-Host "`n✓ Apply cancelled." -ForegroundColor Yellow
+            Write-Host "`n[INFO] Apply cancelled." -ForegroundColor Yellow
         }
     }
 
@@ -907,13 +902,13 @@ switch ($choice) {
                 break
             }
 
-            Write-Host "✗ Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform destroy plan failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyPlanOutput -TerraformExe $terraformExe
             $retryAction = Get-TerraformRemediationAction
 
             if ($retryAction -eq 'retry-plan') {
-                Write-Host "`n↻ Retrying terraform plan -destroy after remediation..." -ForegroundColor Cyan
+                Write-Host "`n[RETRY] Running terraform plan -destroy again after remediation..." -ForegroundColor Cyan
                 continue
             }
 
@@ -928,16 +923,15 @@ switch ($choice) {
             exit 1
         }
 
-        Write-Host "`n┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-        Write-Host "│  DESTROY PLAN COMPLETE                                  │" -ForegroundColor Yellow
-        Write-Host "│                                                         │" -ForegroundColor Yellow
-        Write-Host "│  Review output above and destroy-plan.json             │" -ForegroundColor Yellow
-        Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host "`n---------------------------------------------------------" -ForegroundColor Yellow
+    Write-Host "DESTROY PLAN COMPLETE" -ForegroundColor Yellow
+    Write-Host "Review output above and destroy-plan.json" -ForegroundColor Yellow
+    Write-Host "---------------------------------------------------------" -ForegroundColor Yellow
 
         $confirmDestroy = Read-Host "`nProceed with terraform destroy? (yes/no)"
 
         if ($confirmDestroy -notin @('yes', 'y', 'YES', 'Y')) {
-            Write-Host "`n✓ Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
+            Write-Host "`n[INFO] Destroy cancelled. Leaving destroy.tfplan for inspection." -ForegroundColor Yellow
             exit 0
         }
 
@@ -952,13 +946,13 @@ switch ($choice) {
         Write-Host ""
 
         if ($exitCode -eq 0) {
-            Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-            Write-Host "║               TERRAFORM DESTROY COMPLETE                   ║" -ForegroundColor Green
-            Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
-            Write-Host "✓ Infrastructure destroyed successfully." -ForegroundColor Green
+            Write-Host "`n============================================================" -ForegroundColor Green
+            Write-Host "TERRAFORM DESTROY COMPLETE" -ForegroundColor Green
+            Write-Host "============================================================`n" -ForegroundColor Green
+            Write-Host "[OK] Infrastructure destroyed successfully." -ForegroundColor Green
         }
         else {
-            Write-Host "✗ Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
+            Write-Host "[ERROR] Terraform destroy failed with exit code: $exitCode" -ForegroundColor Red
 
             $guidanceShown = Show-TerraformErrorGuidance -ErrorOutput $destroyApplyOutput -TerraformExe $terraformExe
 
@@ -975,4 +969,4 @@ switch ($choice) {
     }
 }
 
-Write-Host "`n✓ Terraform workflow complete!" -ForegroundColor Green
+Write-Host "`n[OK] Terraform workflow complete!" -ForegroundColor Green
